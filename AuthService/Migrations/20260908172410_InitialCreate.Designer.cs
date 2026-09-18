@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Proyecto.Models;
+using AuthService.Models;
 
 #nullable disable
 
-namespace Proyecto.Migrations
+namespace AuthService.Migrations
 {
-    [DbContext(typeof(ProyectoContext))]
+    [DbContext(typeof(AuthServiceContext))]
     [Migration("20260908172410_InitialCreate")]
     partial class InitialCreate
     {
@@ -25,7 +25,7 @@ namespace Proyecto.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Proyecto.Models.User", b =>
+            modelBuilder.Entity("AuthService.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

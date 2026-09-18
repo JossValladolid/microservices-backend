@@ -1,10 +1,17 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using Proyecto.Models;
-using Proyecto.Controllers;
+using AuthService.Models;
+using AuthService.Controllers;
 using Scalar.AspNetCore;
 
-Env.Load();
+try
+{
+    Env.TraversePath().Load();
+}
+catch (FileNotFoundException)
+{
+
+}
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -25,16 +32,23 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
 var dbName = Environment.GetEnvironmentVariable("DB_NAME");
 var dbUser = Environment.GetEnvironmentVariable("DB_USER");
 var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
 
-var connectionString = $"Host={dbHost};Database={dbName};Username={dbUser};Password={dbPassword};";
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPassword};";
 
-builder.Services.AddDbContext<ProyectoContext>(opt =>
+builder.Services.AddDbContext<AuthServiceContext>(opt =>
 opt.UseNpgsql(connectionString));
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AuthServiceContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

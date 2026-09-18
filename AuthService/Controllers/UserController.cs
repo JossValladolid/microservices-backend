@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Proyecto.Models;
+using AuthService.Models;
 
-namespace Proyecto.Controllers
+namespace AuthService.Controllers
 {
+    
     /// <summary>
     /// Controlador para gestionar usuarios.
     /// </summary>
@@ -17,18 +18,19 @@ namespace Proyecto.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        private readonly ProyectoContext _context;
+        private readonly AuthServiceContext _context;
 
         /// <summary>
         /// Constructor del controlador de usuarios.
         /// </summary>
         /// <param name="context">Contexto de la base de datos.</param>
-        public UserController(ProyectoContext context)
+        public UserController(AuthServiceContext context)
         {
             _context = context;
         }
 
         // GET: api/User
+
         /// <summary>
         /// Obtiene todos los usuarios de la base de datos.
         /// </summary>
@@ -197,7 +199,7 @@ namespace Proyecto.Controllers
         /// Actualiza la información completa de un usuario existente.
         /// </summary>
         /// <param name="id">El ID del usuario a actualizar.</param>
-        /// <param name="user">Objeto con los nuevos datos del usuario.</param>
+        /// <param name="updateUserViewModel">Objeto con los nuevos datos del usuario.</param>
         /// <returns>No devuelve contenido si la actualización fue exitosa.</returns>
         /// <response code="204">Usuario actualizado correctamente.</response>
         /// <response code="400">El ID de la ruta no coincide con el ID del cuerpo de la petición.</response>
@@ -269,7 +271,9 @@ namespace Proyecto.Controllers
             {
                 Id = newUser.Id,
                 Name = newUser.Name,
-                Email = newUser.Email            
+                Email = newUser.Email,
+                CreatedAt = newUser.CreatedAt,
+                UpdatedAt = newUser.UpdatedAt            
             };
 
             return CreatedAtAction("GetUser", new { id = newUser.Id }, responseUser);

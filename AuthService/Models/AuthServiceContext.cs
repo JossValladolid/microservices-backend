@@ -1,17 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Proyecto.Models;
+namespace AuthService.Models;
 
 /// <summary>
 /// Representa el contexto de la base de datos para el proyecto.
 /// </summary>
-public class ProyectoContext : DbContext 
+public class AuthServiceContext : DbContext 
 {
     /// <summary>
     /// Constructor del contexto de la base de datos.
     /// </summary>
     /// <param name="options"></param>
-    public ProyectoContext(DbContextOptions<ProyectoContext> options)
+    public AuthServiceContext(DbContextOptions<AuthServiceContext> options)
         : base(options)
     {
         

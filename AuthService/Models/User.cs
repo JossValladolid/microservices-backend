@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace Proyecto.Models;
+namespace AuthService.Models;
 
 /// <summary>
 /// Representa un usuario en el sistema.
@@ -126,6 +126,9 @@ public class UserResponseDTO
     public DateTime? UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// Modelo de vista para la actualización de un usuario.
+/// </summary>
 public class UpdateUserViewModel
 {
     /// <summary>
