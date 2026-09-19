@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AuthService.Models;
+using Npgsql;
 
 namespace AuthService.Controllers
 {
@@ -207,6 +208,7 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(Guid id, [FromBody] UpdateUserViewModel updateUserViewModel)
         {
@@ -224,6 +226,10 @@ namespace AuthService.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+            {
+                return Conflict(new { message = "Ya existe un usuario con ese email" });
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -251,6 +257,7 @@ namespace AuthService.Controllers
         /// <response code="400">Los datos enviados no son válidos (ej. contraseñas no coinciden).</response>
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         [HttpPost]
         public async Task<ActionResult<UserResponseDTO>> PostUser(CreateUserViewModel createUserViewModel)
         {
@@ -265,7 +272,15 @@ namespace AuthService.Controllers
             newUser.IsAdmin = false;
 
             _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+            {
+                return Conflict(new { message = "Ya existe un usuario con ese email" });
+            }
 
             var responseUser = new UserResponseDTO
             {
@@ -307,6 +322,12 @@ namespace AuthService.Controllers
         private bool UserExists(Guid id)
         {
             return _context.Users.Any(e => e.Id == id);
+        }
+
+        private static bool IsUniqueEmailViolation(DbUpdateException ex)
+        {
+            return ex.InnerException is PostgresException pgEx
+                && pgEx.SqlState == PostgresErrorCodes.UniqueViolation;
         }
     }
 }

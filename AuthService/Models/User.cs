@@ -127,6 +127,25 @@ public class UserResponseDTO
 }
 
 /// <summary>
+/// Modelo de vista para el inicio de sesión de un usuario.
+/// </summary>
+public class LoginViewModel
+{
+    /// <summary>
+    /// Email del usuario.
+    /// </summary>
+    [Required(ErrorMessage = "El email es obligatorio")]
+    [EmailAddress(ErrorMessage = "El email no es válido")]
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// Contraseña del usuario.
+    /// </summary>
+    [Required(ErrorMessage = "La contraseña es obligatoria")]
+    public string? Password { get; set; }
+}
+
+/// <summary>
 /// Modelo de vista para la actualización de un usuario.
 /// </summary>
 public class UpdateUserViewModel

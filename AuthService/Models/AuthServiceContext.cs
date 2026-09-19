@@ -21,4 +21,14 @@ public class AuthServiceContext : DbContext
     /// Representa la tabla de usuarios en la base de datos.
     /// </summary>
     public DbSet<User> Users {get; set; } = null!;
+
+    /// <inheritdoc />
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+    }
 }
