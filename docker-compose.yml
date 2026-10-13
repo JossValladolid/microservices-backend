@@ -36,6 +36,7 @@ services:
     build:
       context: ./AuthService
       dockerfile: Dockerfile
+      target: dev
     container_name: authservice
     restart: unless-stopped
     depends_on:
@@ -49,8 +50,20 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      SEED_DEMO_USERS: "true"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_ACCESS_EXPIRATION_MINUTES: ${JWT_ACCESS_EXPIRATION_MINUTES}
+      JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS}
     ports:
       - "5098:8080"
+    volumes:
+      - ./AuthService:/src
+      - authservice_bin:/src/bin
+      - authservice_obj:/src/obj
 
 volumes:
   authdb_data:
+  authservice_bin:
+  authservice_obj:

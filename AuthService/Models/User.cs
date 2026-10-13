@@ -1,7 +1,44 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AuthService.Models;
+
+/// <summary>
+/// Representa una sesión activa de un usuario (Refresh Token).
+/// </summary>
+public class Session
+{
+    /// <summary>
+    /// Identificador único de la sesión.
+    /// </summary>
+    [Key]
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Token de la sesión.
+    /// </summary>
+    [Required]
+    public string? Token { get; set; }
+
+    /// <summary>
+    /// Fecha de expiración de la sesión.
+    /// </summary>
+    [Required]
+    public DateTime ExpiryDate { get; set; }
+
+    /// <summary>
+    /// Identificador del usuario al que pertenece la sesión.
+    /// </summary>
+    [Required]
+    public Guid UserId { get; set; }
+
+    /// <summary>
+    /// Propiedad de navegación para el usuario al que pertenece la sesión.
+    /// </summary>
+    [ForeignKey("UserId")]
+    public User? User { get; set; }
+}
 
 /// <summary>
 /// Representa un usuario en el sistema.
@@ -43,6 +80,11 @@ public class User
     /// Fecha de actualización del usuario.
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Colección de sesiones activas del usuario.
+    /// </summary>
+    public ICollection<Session> Sessions { get; set; } = new List<Session>();
 
 }
 
@@ -123,6 +165,7 @@ public class UserResponseDTO
     /// <summary>
     /// Fecha de actualización del usuario.
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? UpdatedAt { get; set; }
 }
 

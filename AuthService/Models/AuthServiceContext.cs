@@ -22,6 +22,11 @@ public class AuthServiceContext : DbContext
     /// </summary>
     public DbSet<User> Users {get; set; } = null!;
 
+    /// <summary>
+    /// Representa la tabla de sesiones en la base de datos.
+    /// </summary>
+    public DbSet<Session> Sessions {get; set; } = null!;
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,5 +35,11 @@ public class AuthServiceContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        modelBuilder.Entity<Session>()
+            .HasOne(s => s.User)
+            .WithMany(u => u.Sessions)
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

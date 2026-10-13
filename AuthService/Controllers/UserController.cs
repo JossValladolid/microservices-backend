@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AuthService.Models;
 using Npgsql;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AuthService.Controllers
 {
@@ -17,6 +17,7 @@ namespace AuthService.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UserController : ControllerBase
     {
         private readonly AuthServiceContext _context;
@@ -77,6 +78,7 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "Admin")]
         [HttpPatch("AddAdmin/{id}")]
         public async Task<ActionResult<UserResponseDTO>> AddAdmin(Guid id)
         {
@@ -126,7 +128,8 @@ namespace AuthService.Controllers
         /// <response code="500">Error interno del servidor.</response>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]   
+        [Authorize(Roles = "Admin")]
         [HttpPatch("RevokeAdmin/{id}")]
         public async Task<ActionResult<UserResponseDTO>> RevokeAdmin(Guid id)
         {
@@ -209,6 +212,7 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(Guid id, [FromBody] UpdateUserViewModel updateUserViewModel)
         {
@@ -258,13 +262,13 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [AllowAnonymous]
         [HttpPost]
         public async Task<ActionResult<UserResponseDTO>> PostUser(CreateUserViewModel createUserViewModel)
         {
-            var hashed = new PasswordHasher<User>();
             var newUser = new User();
 
-            string hashedPassword = hashed.HashPassword(newUser, createUserViewModel.Password!);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserViewModel.Password!);
 
             newUser.Name = createUserViewModel.Name;
             newUser.Email = createUserViewModel.Email;
@@ -304,6 +308,7 @@ namespace AuthService.Controllers
         /// <response code="404">No se encontró el usuario a eliminar.</response>
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(Guid id)
         {

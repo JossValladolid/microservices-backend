@@ -168,6 +168,7 @@ server {
 	listen 443 ssl;
 	ssl_certificate /etc/nginx/certs/localhost+2.pem;
 	ssl_certificate_key /etc/nginx/certs/localhost+2-key.pem;
+}
 ```
 
 `listen 443 ssl` le dice a nginx que en ese puerto debe negociar TLS antes de hablar HTTP. `ssl_certificate` / `ssl_certificate_key` apuntan a los archivos que generó mkcert — pero a la ruta **dentro del contenedor**, no en tu máquina (eso lo resuelve el `volumes:` del `docker-compose.yml`, más abajo).

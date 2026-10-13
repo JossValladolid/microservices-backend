@@ -50,9 +50,51 @@ DB_PORT=5432
 DB_NAME=ProyectoDB
 DB_USER=postgres
 DB_PASSWORD=tu_password
+
+JWT_SECRET=una_cadena_aleatoria_de_al_menos_32_caracteres
+JWT_ISSUER=AuthService
+JWT_AUDIENCE=ProyectoClient
+JWT_ACCESS_EXPIRATION_MINUTES=15
+JWT_REFRESH_EXPIRATION_DAYS=7
 ```
 
 > `DB_HOST`/`DB_PORT` en `.env` solo se usan si corres el proyecto fuera de Docker (`dotnet run`). Dentro de `docker-compose.yml`, `authservice` se conecta a `authdb` (el nombre del servicio) automáticamente.
+
+#### Variables de JWT
+
+| Variable | Obligatoria | Descripción |
+|---|---|---|
+| `JWT_SECRET` | Sí | Llave con la que se firman los access tokens (HS256). Mínimo **32 caracteres**; si falta o es más corta, `AuthService` no arranca. |
+| `JWT_ISSUER` | Sí | Emisor (`iss`) que se escribe en el token y se exige al validarlo. |
+| `JWT_AUDIENCE` | Sí | Audiencia (`aud`) que se escribe en el token y se exige al validarlo. |
+| `JWT_ACCESS_EXPIRATION_MINUTES` | No (default `15`) | Vida del access token, en minutos. |
+| `JWT_REFRESH_EXPIRATION_DAYS` | No (default `7`) | Vida del refresh token, en días. |
+
+Genera un `JWT_SECRET` seguro con:
+
+```bash
+openssl rand -base64 48
+```
+
+> ⚠️ Nunca subas el `JWT_SECRET` real a git: quien lo tenga puede fabricar tokens válidos (incluso de administrador). Si se filtra, cámbialo; todos los access tokens existentes quedarán inválidos.
+
+#### Cómo se usan los tokens
+
+- El login (`POST /api/Auth/login`) devuelve el usuario y deja **dos cookies `HttpOnly`, `Secure` y `SameSite=Strict`**: el access token (JWT, path `/api`) y el refresh token (texto aleatorio guardado en la tabla `Sessions`, path `/api/Auth`). JavaScript nunca los puede leer.
+- `POST /api/Auth/refresh` genera un access token nuevo y rota el refresh token; `POST /api/Auth/logout` revoca la sesión y borra las cookies; `GET /api/Auth/me` devuelve el usuario autenticado.
+- Como las cookies son `Secure`, solo viajan por HTTPS: usa `https://localhost` (nginx) en lugar de `http://localhost:5098` para probar el login desde el navegador.
+- Más detalle del flujo completo en [`docs/jwt-explicado.md`](docs/jwt-explicado.md).
+
+#### Usuarios demo (seed)
+
+`docker-compose.yml` define `SEED_DEMO_USERS: "true"` para `authservice`, lo que inserta al arrancar los usuarios de `AuthService/Seed/seed_users.sql`:
+
+| Email | Contraseña | Rol |
+|---|---|---|
+| `admin@example.com` | `Admin123!` | Admin |
+| `usuario@example.com` | `Usuario123!` | Usuario |
+
+> Solo para desarrollo. Quita o pon en `false` `SEED_DEMO_USERS` en cualquier entorno real.
 
 ### 2. Genera los certificados HTTPS locales (una sola vez)
 
@@ -153,7 +195,7 @@ Desde la **raíz del repo** (no dentro de `AuthService/`):
 cp .env.example .env
 ```
 
-Edita `.env` con tus credenciales locales (`DB_HOST=localhost`, `DB_PORT=5432`, etc.). `Program.cs` busca el `.env` recorriendo hacia arriba desde el directorio de trabajo (`Env.TraversePath().Load()`), así que funciona tanto si corres `dotnet run` desde `AuthService/` como desde la raíz.
+Edita `.env` con tus credenciales locales (`DB_HOST=localhost`, `DB_PORT=5432`, etc.) y las variables `JWT_*` (ver la tabla en la Opción A; sin ellas el servicio no arranca). Si quieres los usuarios demo, exporta también `SEED_DEMO_USERS=true`. `Program.cs` busca el `.env` recorriendo hacia arriba desde el directorio de trabajo (`Env.TraversePath().Load()`), así que funciona tanto si corres `dotnet run` desde `AuthService/` como desde la raíz.
 
 > ⚠️ Si alguna vez subiste una contraseña real a un repositorio (aunque luego borres el commit o el repo), considérala comprometida y **cámbiala** en PostgreSQL — puede seguir accesible en cachés, forks o el historial de quien lo haya clonado antes.
 
