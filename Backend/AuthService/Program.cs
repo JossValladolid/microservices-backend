@@ -92,7 +92,8 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     {
         ServiceURL = minioServiceUrl,
         ForcePathStyle = true,
-        AuthenticationRegion = minioRegion
+        AuthenticationRegion = minioRegion,
+        HttpClientFactory = new LocalDevHttpClientFactory()
     };
 
     if (!string.IsNullOrEmpty(minioAccessKey) && !string.IsNullOrEmpty(minioSecretKey))
@@ -140,3 +141,15 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public class LocalDevHttpClientFactory : Amazon.Runtime.HttpClientFactory
+{
+    public override HttpClient CreateHttpClient(Amazon.Runtime.IClientConfig clientConfig)
+    {
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+        };
+        return new HttpClient(handler);
+    }
+}

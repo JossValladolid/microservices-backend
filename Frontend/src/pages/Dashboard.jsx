@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
 import FormUser from '../components/FormUser.jsx'
 import ConfirmarAdminModal from '../components/ConfirmarAdminModal.jsx'
+import ArchivosModal from '../components/ArchivosModal.jsx'
 import { apiFetch } from '../api.js'
+import { useUploadFiles } from '../hooks/uploadFiles.jsx'
 
 const formatDate = (stringDate) => {
   if (!stringDate) return 'N/A';
@@ -82,7 +84,33 @@ export default function Dashboard() {
     }
   }
 
-  
+  const fileInputRef = useRef(null)
+  const { uploadFile, uploading } = useUploadFiles()
+
+  const subirArchivo = () => {
+    fileInputRef.current?.click()
+  }
+
+  const manejarArchivoSeleccionado = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const result = await uploadFile(file)
+      toast.success(`Archivo "${result.fileName}" subido exitosamente`)
+    } catch (error) {
+      console.error('Error al subir el archivo:', error)
+      toast.error(error.message || 'Error al subir el archivo')
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  const [mostrarArchivosModal, setMostrarArchivosModal] = useState(false)
+
+  const verArchivos = () => {
+    setMostrarArchivosModal(true)
+  }
 
   return (
     <div>
@@ -90,14 +118,24 @@ export default function Dashboard() {
       <div className="barra">
         <p>inición sesiada como {usuarioActual.name}</p>
         <div className="acciones">
-          <button type="button">Subir archivo</button>
-          <button type="button">Ver mis archivos</button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={manejarArchivoSeleccionado}
+          />
+          <button type="button" onClick={subirArchivo} disabled={uploading}>
+            {uploading ? 'Subiendo...' : 'Subir archivo'}
+          </button>
+          <button type="button" onClick={verArchivos}>Ver mis archivos</button>
           <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
         </div>
       </div>
-      {esAdmin && (
-        <FormUser titulo="Registrar nuevo usuario" onUserCreated={manejarNuevoUsuario} />
-      )}
+      {
+        esAdmin && (
+          <FormUser titulo="Registrar nuevo usuario" onUserCreated={manejarNuevoUsuario} />
+        )
+      }
         <hr />
 
       {!esAdmin ? (
@@ -149,6 +187,10 @@ export default function Dashboard() {
         procesando={procesando}
         onConfirmar={confirmarCambioAdmin}
         onCancelar={() => setUsuarioSeleccionado(null)}
+      />
+      <ArchivosModal
+        abierto={mostrarArchivosModal}
+        onCerrar={() => setMostrarArchivosModal(false)}
       />
     </div>
   )

@@ -51,6 +51,10 @@ services:
     volumes:
       - ./Backend/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./Backend/nginx/certs:/etc/nginx/certs:ro
+    networks:
+      default:
+        aliases:
+          - s3.localhost
     depends_on:
       certs-init:
         condition: service_completed_successfully
