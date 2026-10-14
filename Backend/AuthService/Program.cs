@@ -4,6 +4,7 @@ using AuthService.Models;
 using AuthService.Services;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
 
@@ -62,6 +63,13 @@ var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username=
 builder.Services.AddDbContext<AuthServiceContext>(opt =>
 opt.UseNpgsql(connectionString));
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownIPNetworks.Clear();
+        options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
+    });
+        
 var minioAccessKey = Environment.GetEnvironmentVariable("MINIO_SVCACCT_ACCESS_KEY")
                      ?? Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")
                      ?? builder.Configuration["AWS:AccessKey"];
