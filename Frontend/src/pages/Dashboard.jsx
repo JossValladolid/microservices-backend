@@ -87,10 +87,14 @@ export default function Dashboard() {
   return (
     <div>
       <Toaster position="top-center" />
-      <p>
-        Sesión iniciada como {usuarioActual.name}
-        <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
-      </p>
+      <div className="barra">
+        <p>inición sesiada como {usuarioActual.name}</p>
+        <div className="acciones">
+          <button type="button">Subir archivo</button>
+          <button type="button">Ver mis archivos</button>
+          <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
+        </div>
+      </div>
       {esAdmin && (
         <FormUser titulo="Registrar nuevo usuario" onUserCreated={manejarNuevoUsuario} />
       )}
@@ -104,7 +108,7 @@ export default function Dashboard() {
         {cargando ? (
           <p>Cargando usuarios...</p>
         ) : (
-          <table border="1" cellPadding="10">
+          <table className="tabla">
             <thead>
               <tr>
                 <th>ID</th>

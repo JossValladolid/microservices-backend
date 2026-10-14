@@ -40,7 +40,7 @@ export default function Login() {
   }
 
   return (
-    <>
+    <div className="auth">
       <Toaster position="top-center" />
 
       <form onSubmit={handleSubmit}>
@@ -73,6 +73,6 @@ export default function Login() {
         ¿No tienes cuenta?{' '}
         <Link to="/registro">Regístrate</Link>
       </p>
-    </>
+    </div>
   )
 }

@@ -5,10 +5,12 @@ export default function Register() {
   const navigate = useNavigate()
 
   return (
-    <FormUser
-      titulo="Crear cuenta"
-      onUserCreated={() => navigate('/login')}
-      onCancelar={() => navigate('/login')}
-    />
+    <div className="auth">
+      <FormUser
+        titulo="Crear cuenta"
+        onUserCreated={() => navigate('/login')}
+        onCancelar={() => navigate('/login')}
+      />
+    </div>
   )
 }
