@@ -31,8 +31,6 @@ namespace AuthService.Controllers
             _context = context;
         }
 
-        // GET: api/User
-
         /// <summary>
         /// Obtiene todos los usuarios de la base de datos.
         /// </summary>
@@ -43,6 +41,7 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserResponseDTO>>> GetUsers()
         {
@@ -169,7 +168,6 @@ namespace AuthService.Controllers
             };
         }
 
-        // GET: api/User/5
         /// <summary>
         /// Obtiene un usuario específico por su ID.
         /// </summary>
@@ -198,7 +196,6 @@ namespace AuthService.Controllers
             };
         }
 
-        // PUT: api/User/5
         /// <summary>
         /// Actualiza la información completa de un usuario existente.
         /// </summary>
