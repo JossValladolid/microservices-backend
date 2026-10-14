@@ -4,7 +4,8 @@ using AuthService.Models;
 using AuthService.Services;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.S3;
 
 try
 {
@@ -61,11 +62,37 @@ var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username=
 builder.Services.AddDbContext<AuthServiceContext>(opt =>
 opt.UseNpgsql(connectionString));
 
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
+var minioAccessKey = Environment.GetEnvironmentVariable("MINIO_SVCACCT_ACCESS_KEY")
+                     ?? Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")
+                     ?? builder.Configuration["AWS:AccessKey"];
+
+var minioSecretKey = Environment.GetEnvironmentVariable("MINIO_SVCACCT_SECRET_KEY")
+                     ?? Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY")
+                     ?? builder.Configuration["AWS:SecretKey"];
+
+var minioServiceUrl = Environment.GetEnvironmentVariable("MINIO_S3_URL")
+                      ?? builder.Configuration["AWS:ServiceURL"]
+                      ?? "https://s3.localhost";
+
+var minioRegion = Environment.GetEnvironmentVariable("AWS_REGION")
+                  ?? builder.Configuration["AWS:Region"]
+                  ?? "us-east-1";
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
-    options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
+    var s3Config = new AmazonS3Config
+    {
+        ServiceURL = minioServiceUrl,
+        ForcePathStyle = true,
+        AuthenticationRegion = minioRegion
+    };
+
+    if (!string.IsNullOrEmpty(minioAccessKey) && !string.IsNullOrEmpty(minioSecretKey))
+    {
+        return new AmazonS3Client(minioAccessKey, minioSecretKey, s3Config);
+    }
+
+    return new AmazonS3Client(s3Config);
 });
 
 var app = builder.Build();
