@@ -481,4 +481,6 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 Backend/nginx/certs/*.pem
+Backend/nginx/certs/*.crt
+Backend/nginx/certs/*.key
 Frontend/dist/
