@@ -1,23 +1,23 @@
 # Proyecto
 
-Arquitectura de microservicios construida con **ASP.NET Core (.NET 10)**, **Entity Framework Core** y **PostgreSQL**, y un frontend en **React + Vite**, detrás de **nginx** como reverse proxy con HTTPS. Cada microservicio vive en su propia carpeta, con su propia base de datos y su propio `Dockerfile`. Un solo `docker compose up` levanta todo (DB, API, frontend y nginx).
+Arquitectura de microservicios construida con **ASP.NET Core (.NET 10)**, **Entity Framework Core**, **PostgreSQL** y **MinIO (S3 Object Storage)**, con frontend en **React + Vite**, detrás de **nginx** como reverse proxy (HTTP/HTTPS). Cada microservicio vive en su propia carpeta, con su propia base de datos y su propio `Dockerfile`. Un solo `docker compose up` levanta todo (DB, API, MinIO, frontend y nginx).
 
 ## Estructura del repositorio
 
 ```
 .
-├── docker-compose.yml        # Orquesta frontend + microservicios + sus DBs + nginx
-├── .env / .env.example       # Credenciales compartidas (una DB por servicio)
+├── docker-compose.yml        # Orquesta frontend + backend + DBs + MinIO + nginx
+├── .env / .env.example       # Variables de entorno y configuración de red
 ├── Backend/
 │   ├── nginx/
-│   │   ├── nginx.conf        # Reverse proxy: HTTPS, redirect HTTP→HTTPS, /api/ → API, / → Vite
-│   │   └── certs/            # Certificados locales (mkcert)
+│   │   ├── nginx.conf        # Reverse proxy: HTTP/HTTPS, /api/ → API, /images/ → MinIO S3, / → Vite
+│   │   └── certs/            # Certificados SSL generados automáticamente por certs-init
 │   ├── docs/
-│   └── AuthService/          # Microservicio de autenticación / usuarios
+│   └── AuthService/          # Microservicio de autenticación / usuarios / archivos (S3)
 │       ├── Dockerfile        # targets: dev (dotnet watch) y final (publish)
 │       ├── AuthService.csproj
 │       ├── Program.cs
-│       ├── Controllers/
+│       ├── Controllers/      # AuthController, UserController, FilesController (S3)
 │       ├── Models/
 │       └── Migrations/
 └── Frontend/                 # React + Vite
@@ -63,9 +63,22 @@ JWT_ISSUER=AuthService
 JWT_AUDIENCE=ProyectoClient
 JWT_ACCESS_EXPIRATION_MINUTES=15
 JWT_REFRESH_EXPIRATION_DAYS=7
+
+# MinIO Object Storage
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
+MINIO_SERVICE_USER=backend-service
+MINIO_SERVICE_USER_PASSWORD=MySecretPass123!
+MINIO_SVCACCT_ACCESS_KEY=bknd-svc-key
+MINIO_SVCACCT_SECRET_KEY=backend-svc-secret-key-change-me
+MINIO_DEFAULT_BUCKET=images
+
+# Configuración de Red (Opcional - para acceder por LAN o mover de red)
+PUBLIC_HOST=192.168.1.99
 ```
 
-> `DB_HOST`/`DB_PORT` en `.env` solo se usan si corres el proyecto fuera de Docker (`dotnet run`). Dentro de `docker-compose.yml`, `authservice` se conecta a `authdb` (el nombre del servicio) automáticamente.
+> `DB_HOST`/`DB_PORT` en `.env` solo se usan si corres el proyecto fuera de Docker (`dotnet run`). Dentro de `docker-compose.yml`, `authservice` se conecta a `authdb` automáticamente.
+> `PUBLIC_HOST` es tu IP local o dominio; si cambias de red, solo actualizas este valor (o lo dejas vacío para auto-detectar).
 
 #### Variables de JWT
 
@@ -125,18 +138,41 @@ docker compose up -d --build
 
 No hace falta compilar el frontend ni instalar nada en tu máquina: todo corre en contenedores. Esto crea:
 - **`authdb`**: PostgreSQL en un volumen propio (`authdb_data`), expuesto en el host en el puerto **5433** (para no chocar con un Postgres local en 5432).
-- **`authservice`**: la API (target `dev`, corre con `dotnet watch`, así que recompila al guardar). Expuesta también en `http://localhost:5098` (acceso directo, útil para depurar). Al arrancar aplica las migraciones automáticamente sobre `authdb`.
-- **`frontend`**: Vite (`npm run dev`) con hot reload, expuesto también en `http://localhost:5173`. El código de `Frontend/` está montado en el contenedor y `node_modules` vive en un volumen propio (`frontend_node_modules`).
-- **`nginx`**: único punto de entrada real. Puerto **80** solo redirige a **443**; **443** sirve HTTPS con el certificado de mkcert, rutea `/api/*` hacia `authservice` y todo lo demás hacia `frontend`.
+- **`authservice`**: la API (target `dev`, corre con `dotnet watch`). Expuesta en `http://localhost:5098`. Al arrancar aplica migraciones automáticamente.
+- **`minio`**: servidor de almacenamiento de objetos compatible con AWS S3. Expuesto en puerto **9000** (S3 API) y **9002** (consola administrativa).
+- **`minio-init`**: contenedor que inicializa automáticamente el usuario de servicio (`MINIO_SERVICE_USER`), la política de lectura/escritura, el bucket predeterminado (`images`) y las credenciales de servicio.
+- **`certs-init`**: genera automáticamente los certificados SSL locales en `Backend/nginx/certs` con SAN para `localhost`, `127.0.0.1` y cualquier IP/dominio configurado en `PUBLIC_HOST`.
+- **`frontend`**: Vite (`npm run dev`) con hot reload, expuesto en `http://localhost:5173`.
+- **`nginx`**: punto de entrada unificado para todos los dispositivos. Puerto **80** (HTTP) y puerto **443** (HTTPS):
+  - `/` → frontend de React
+  - `/api/` → microservicio de autenticación
+  - `/images/` → almacenamiento de objetos MinIO S3 (Path-Style)
+  - `/storage/` → consola de administración de MinIO
 
-### 4. Verifica que responde
+### 4. Acceso desde otros dispositivos y redes (LAN)
+
+Para acceder a la aplicación desde tu teléfono, tablet u otra computadora en la misma red Wi-Fi/LAN:
+
+1. Revisa la IP de tu máquina en la red (ejemplo: `192.168.1.99`).
+2. Configura en tu `.env`:
+   ```dotenv
+   PUBLIC_HOST=192.168.1.99
+   ```
+3. Ejecuta `docker compose up -d` para aplicar los cambios en el certificado.
+4. En cualquier dispositivo conectado a tu red, abre:
+   - **HTTP (recomendado para LAN sin advertencias de certificado)**: `http://192.168.1.99`
+   - **HTTPS**: `https://192.168.1.99`
+   - **Vite Dev directo**: `http://192.168.1.99:5173`
+
+> Las URLs prefirmadas de subida y descarga de archivos de S3 se generan dinámicamente usando el host y protocolo con el que te conectas, por lo que subir y descargar archivos funciona en cualquier interfaz o IP automáticamente.
+
+### 5. Verifica que responde
 
 ```bash
-curl -i https://localhost/api/User      # API, vía nginx
-curl -i http://localhost/               # debe responder 301 → https
+curl -i http://localhost/api/User         # API vía HTTP
+curl -k -i https://localhost/api/User      # API vía HTTPS
+curl -i http://localhost/images/           # MinIO S3 vía nginx
 ```
-
-O abre `https://localhost` directo en el navegador — deberías ver tu app de React, sin advertencias de certificado. Al guardar un cambio en `Frontend/src` o en `Backend/AuthService`, el navegador / la API se actualizan solos.
 
 ### 5. Comandos útiles
 

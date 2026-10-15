@@ -67,6 +67,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
         options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+        // Docker bridge networks live in 172.16.0.0/12
         options.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("172.16.0.0"), 12));
     });
         
@@ -80,7 +82,7 @@ var minioSecretKey = Environment.GetEnvironmentVariable("MINIO_SVCACCT_SECRET_KE
 
 var minioServiceUrl = Environment.GetEnvironmentVariable("MINIO_S3_URL")
                       ?? builder.Configuration["AWS:ServiceURL"]
-                      ?? "https://s3.localhost";
+                      ?? "http://minio:9000";
 
 var minioRegion = Environment.GetEnvironmentVariable("AWS_REGION")
                   ?? builder.Configuration["AWS:Region"]
@@ -102,6 +104,26 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     }
 
     return new AmazonS3Client(s3Config);
+});
+
+// Separate client used only for generating presigned URLs — points at the public-facing
+// nginx address so the URLs the browser receives use https://localhost, not http://minio:9000.
+var minioPublicUrl = Environment.GetEnvironmentVariable("MINIO_PUBLIC_URL") ?? "https://localhost";
+builder.Services.AddSingleton<PresignS3Client>(_ =>
+{
+    var s3Config = new AmazonS3Config
+    {
+        ServiceURL = minioPublicUrl,
+        ForcePathStyle = true,
+        AuthenticationRegion = minioRegion,
+        HttpClientFactory = new LocalDevHttpClientFactory()
+    };
+
+    var client = !string.IsNullOrEmpty(minioAccessKey) && !string.IsNullOrEmpty(minioSecretKey)
+        ? new AmazonS3Client(minioAccessKey, minioSecretKey, s3Config)
+        : new AmazonS3Client(s3Config);
+
+    return new PresignS3Client(client);
 });
 
 var app = builder.Build();
@@ -133,8 +155,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowViteLocal");
 
-app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -152,4 +172,10 @@ public class LocalDevHttpClientFactory : Amazon.Runtime.HttpClientFactory
         };
         return new HttpClient(handler);
     }
+}
+
+// Wrapper so DI can distinguish the presigning client from the internal operations client.
+public class PresignS3Client(IAmazonS3 inner)
+{
+    public IAmazonS3 Inner { get; } = inner;
 }

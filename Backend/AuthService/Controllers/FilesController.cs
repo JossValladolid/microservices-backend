@@ -12,14 +12,16 @@ namespace AuthService.Controllers;
 public class FilesController : ControllerBase
 {
     private readonly IAmazonS3 _s3Client;
+    private readonly IAmazonS3 _presignClient;
     private readonly string _bucketName;
 
     /// <summary>
     /// Constructor del controlador de archivos.
     /// </summary>
-    public FilesController(IAmazonS3 s3Client, IConfiguration configuration)
+    public FilesController(IAmazonS3 s3Client, PresignS3Client presignClient, IConfiguration configuration)
     {
         _s3Client = s3Client;
+        _presignClient = presignClient.Inner;
         _bucketName = Environment.GetEnvironmentVariable("MINIO_DEFAULT_BUCKET")
                       ?? configuration["AWS:BucketName"]
                       ?? "images";
@@ -103,11 +105,11 @@ public class FilesController : ControllerBase
             request.ContentType = contentType;
         }
 
-        string url = await _s3Client.GetPreSignedURLAsync(request);
+        string url = await _presignClient.GetPreSignedURLAsync(request);
 
-        return Ok(new 
-        { 
-            uploadUrl = url, 
+        return Ok(new
+        {
+            uploadUrl = url,
             fileKey = fileKey,
             bucket = _bucketName,
             expiresInMinutes = 15
@@ -140,11 +142,11 @@ public class FilesController : ControllerBase
             request.ResponseHeaderOverrides.ContentDisposition = $"attachment; filename=\"{downloadName}\"";
         }
 
-        string url = await _s3Client.GetPreSignedURLAsync(request);
+        string url = await _presignClient.GetPreSignedURLAsync(request);
 
-        return Ok(new 
-        { 
-            downloadUrl = url, 
+        return Ok(new
+        {
+            downloadUrl = url,
             fileKey = fileKey,
             bucket = _bucketName,
             expiresInMinutes = 30
