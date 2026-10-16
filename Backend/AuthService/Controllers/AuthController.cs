@@ -49,7 +49,6 @@ namespace AuthService.Controllers
                 return Unauthorized(new { message = "Credenciales inválidas" });
             }
 
-            // Limpiar sesiones vencidas del usuario para que la tabla no crezca sin fin
             await _context.Sessions
                 .Where(s => s.UserId == user.Id && s.ExpiryDate <= DateTime.UtcNow)
                 .ExecuteDeleteAsync();
@@ -74,10 +73,9 @@ namespace AuthService.Controllers
         {
             var refreshToken = Request.Cookies[TokenService.RefreshTokenCookie];
 
-            // La sesión ya nos dice a qué usuario pertenece, no hace falta el access token
             var session = refreshToken == null ? null : await _context.Sessions
                 .Include(s => s.User)
-                .FirstOrDefaultAsync(s => s.Token == refreshToken);
+                .FirstOrDefaultAsync(s => s.RefreshToken == refreshToken);
 
             if (session == null || session.ExpiryDate <= DateTime.UtcNow)
             {
@@ -106,7 +104,7 @@ namespace AuthService.Controllers
             if (refreshToken != null)
             {
                 await _context.Sessions
-                    .Where(s => s.Token == refreshToken)
+                    .Where(s => s.RefreshToken == refreshToken)
                     .ExecuteDeleteAsync();
             }
 
@@ -148,14 +146,14 @@ namespace AuthService.Controllers
         {
             var user = session.User!;
 
-            session.Token = TokenService.GenerateRefreshToken();
+            session.RefreshToken = TokenService.GenerateRefreshToken();
             session.ExpiryDate = DateTime.UtcNow.Add(_tokenService.RefreshTokenLifetime);
             await _context.SaveChangesAsync();
 
             Response.Cookies.Append(TokenService.AccessTokenCookie, _tokenService.GenerateAccessToken(user),
                 CookieOptions("/api", _tokenService.AccessTokenLifetime));
             // El refresh token solo se manda a /api/Auth (refresh y logout), no a todas las peticiones
-            Response.Cookies.Append(TokenService.RefreshTokenCookie, session.Token,
+            Response.Cookies.Append(TokenService.RefreshTokenCookie, session.RefreshToken,
                 CookieOptions("/api/Auth", _tokenService.RefreshTokenLifetime));
 
             return ToDto(user);
@@ -182,6 +180,7 @@ namespace AuthService.Controllers
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            BirthDate = user.BirthDate,
             IsAdmin = user.IsAdmin
         };
     }

@@ -106,8 +106,6 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     return new AmazonS3Client(s3Config);
 });
 
-// Separate client used only for generating presigned URLs — points at the public-facing
-// nginx address so the URLs the browser receives use https://localhost, not http://minio:9000.
 var minioPublicUrl = Environment.GetEnvironmentVariable("MINIO_PUBLIC_URL") ?? "https://localhost";
 builder.Services.AddSingleton<PresignS3Client>(_ =>
 {
@@ -162,8 +160,16 @@ app.MapControllers();
 
 app.Run();
 
+/// <summary>
+/// HttpClientFactory personalizado para entornos de desarrollo local que ignora la validación del certificado SSL.
+/// </summary>
 public class LocalDevHttpClientFactory : Amazon.Runtime.HttpClientFactory
 {
+    /// <summary>
+    /// Crea un HttpClient que ignora la validación del certificado SSL. Esto es útil para entornos de desarrollo local donde se utilizan certificados autofirmados.
+    /// </summary>
+    /// <param name="clientConfig"></param>
+    /// <returns></returns>
     public override HttpClient CreateHttpClient(Amazon.Runtime.IClientConfig clientConfig)
     {
         var handler = new HttpClientHandler
@@ -174,8 +180,14 @@ public class LocalDevHttpClientFactory : Amazon.Runtime.HttpClientFactory
     }
 }
 
-// Wrapper so DI can distinguish the presigning client from the internal operations client.
+/// <summary>
+/// Clase que envuelve un cliente de Amazon S3 para permitir la pre-firma de URLs.
+/// </summary>
+/// <param name="inner"></param>
 public class PresignS3Client(IAmazonS3 inner)
 {
+    /// <summary>
+    /// Cliente de Amazon S3 subyacente.
+    /// </summary>
     public IAmazonS3 Inner { get; } = inner;
 }

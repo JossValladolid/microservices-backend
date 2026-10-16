@@ -50,6 +50,8 @@ namespace AuthService.Controllers
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
+                BirthDate = user.BirthDate,
+                IsActive = user.IsActive,
                 IsAdmin = user.IsAdmin,
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt
@@ -112,7 +114,9 @@ namespace AuthService.Controllers
                 Id = existingUser.Id,
                 Name = existingUser.Name,
                 Email = existingUser.Email,
+                BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
+                IsActive = existingUser.IsActive,
                 UpdatedAt = existingUser.UpdatedAt
             };
         }
@@ -163,7 +167,9 @@ namespace AuthService.Controllers
                 Id = existingUser.Id,
                 Name = existingUser.Name,
                 Email = existingUser.Email,
+                BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
+                IsActive = existingUser.IsActive,
                 UpdatedAt = existingUser.UpdatedAt
             };
         }
@@ -192,7 +198,11 @@ namespace AuthService.Controllers
                 Id = user.Id,
                 Name = user.Name,
                 Email = user.Email,
-                IsAdmin = user.IsAdmin
+                BirthDate = user.BirthDate,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                IsAdmin = user.IsAdmin,
+                IsActive = user.IsActive
             };
         }
 
@@ -220,8 +230,8 @@ namespace AuthService.Controllers
                 return NotFound();
             }
 
-            existingUser.Name = updateUserViewModel.Name;
-            existingUser.Email = updateUserViewModel.Email;
+            existingUser.Name = updateUserViewModel.Name!;   // no nulo: lo garantiza [Required]
+            existingUser.Email = updateUserViewModel.Email!;
             existingUser.UpdatedAt = DateTime.UtcNow;
 
             try
@@ -267,8 +277,8 @@ namespace AuthService.Controllers
 
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserViewModel.Password!);
 
-            newUser.Name = createUserViewModel.Name;
-            newUser.Email = createUserViewModel.Email;
+            newUser.Name = createUserViewModel.Name!;
+            newUser.Email = createUserViewModel.Email!;
             newUser.Password = hashedPassword;
             newUser.IsAdmin = false;
 
@@ -288,8 +298,9 @@ namespace AuthService.Controllers
                 Id = newUser.Id,
                 Name = newUser.Name,
                 Email = newUser.Email,
+                BirthDate = newUser.BirthDate,
                 CreatedAt = newUser.CreatedAt,
-                UpdatedAt = newUser.UpdatedAt            
+                IsActive = newUser.IsActive
             };
 
             return CreatedAtAction("GetUser", new { id = newUser.Id }, responseUser);
