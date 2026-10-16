@@ -174,6 +174,107 @@ namespace AuthService.Controllers
             };
         }
 
+
+        /// <summary>
+        /// Activa un usuario específico por su ID.
+        /// </summary>
+        /// <param name="id">El ID del usuario a activar.</param>
+        /// <returns>Usuario actualizado.</returns>
+        /// <response code="200">Devuelve el usuario actualizado.</response>
+        /// <response code="404">No se encontró el usuario.</response>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpPatch("Activate/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<UserResponseDTO>> ActivateUser(Guid id)
+        {
+            var existingUser = await _context.Users.FindAsync(id);
+
+            if (existingUser == null)
+            {
+                return NotFound();
+            }
+
+            existingUser.IsActive = true;
+            existingUser.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return new UserResponseDTO
+            {
+                Id = existingUser.Id,
+                Name = existingUser.Name,
+                Email = existingUser.Email,
+                BirthDate = existingUser.BirthDate,
+                IsAdmin = existingUser.IsAdmin,
+                IsActive = existingUser.IsActive,
+                UpdatedAt = existingUser.UpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Desactiva un usuario específico por su ID.
+        /// </summary>
+        /// <param name="id">El ID del usuario a desactivar.</param>
+        /// <returns>Usuario desactivado.</returns>
+        /// <response code="200">Devuelve el usuario desactivado.</response>
+        /// <response code="404">No se encontró el usuario.</response>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpPatch("Deactivate/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<UserResponseDTO>> DeactivateUser(Guid id)
+        {
+            var existingUser = await _context.Users.FindAsync(id);
+
+            if (existingUser == null)
+            {
+                return NotFound();
+            }
+
+            existingUser.IsActive = false;
+            existingUser.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return new UserResponseDTO
+            {
+                Id = existingUser.Id,
+                Name = existingUser.Name,
+                Email = existingUser.Email,
+                BirthDate = existingUser.BirthDate,
+                IsAdmin = existingUser.IsAdmin,
+                IsActive = existingUser.IsActive,
+                UpdatedAt = existingUser.UpdatedAt
+            };
+        }
+
         /// <summary>
         /// Obtiene un usuario específico por su ID.
         /// </summary>
@@ -230,7 +331,7 @@ namespace AuthService.Controllers
                 return NotFound();
             }
 
-            existingUser.Name = updateUserViewModel.Name!;   // no nulo: lo garantiza [Required]
+            existingUser.Name = updateUserViewModel.Name!;
             existingUser.Email = updateUserViewModel.Email!;
             existingUser.UpdatedAt = DateTime.UtcNow;
 
@@ -277,9 +378,10 @@ namespace AuthService.Controllers
 
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserViewModel.Password!);
 
-            newUser.Name = createUserViewModel.Name!;
-            newUser.Email = createUserViewModel.Email!;
+            newUser.Name = createUserViewModel.Name;
+            newUser.Email = createUserViewModel.Email;
             newUser.Password = hashedPassword;
+            newUser.BirthDate = createUserViewModel.BirthDate!.Value;
             newUser.IsAdmin = false;
 
             _context.Users.Add(newUser);
