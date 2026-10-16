@@ -28,6 +28,9 @@ export default function Login() {
         toast.success(`Hola, ${usuario.name}`)
         iniciarSesion(usuario)
         navigate('/')
+      } else if (response.status === 403) {
+        const { message } = await response.json().catch(() => ({}))
+        toast.error(message || 'Tu cuenta está pendiente de activación')
       } else {
         toast.error('Credenciales inválidas')
       }

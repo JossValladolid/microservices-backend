@@ -3,6 +3,7 @@ import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
 import FormUser from '../components/FormUser.jsx'
 import ConfirmarAdminModal from '../components/ConfirmarAdminModal.jsx'
+import ConfirmarActivedUserModal from '../components/ConfirmarActivedUserModal.jsx'
 import ArchivosModal from '../components/ArchivosModal.jsx'
 import { apiFetch } from '../api.js'
 import { useUploadFiles } from '../hooks/uploadFiles.jsx'
@@ -15,12 +16,21 @@ const formatDate = (stringDate) => {
   });
 };
 
+const formatBirthDate = (stringDate) => {
+  if (!stringDate) return 'N/A';
+  const [year, month, day] = stringDate.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('es-MX', {
+    year: 'numeric', month: 'short', day: 'numeric'
+  });
+};
+
 export default function Dashboard() {
   const { usuarioActual, cerrarSesion } = useAuth()
   const [recargar, setRecargar] = useState(false)
   const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null)
+  const [usuarioActivacion, setUsuarioActivacion] = useState(null)
   const [procesando, setProcesando] = useState(false)
 
   const esAdmin = usuarioActual?.isAdmin
@@ -78,6 +88,39 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error al cambiar el rol de admin:', error)
+      toast.error('Ocurrió un error al actualizar el usuario')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const confirmarCambioActivo = async () => {
+    if (!usuarioActivacion) return
+    setProcesando(true)
+
+    const accion = usuarioActivacion.isActive ? 'Deactivate' : 'Activate'
+
+    try {
+      const response = await apiFetch(`/api/User/${accion}/${usuarioActivacion.id}`, {
+        method: 'PATCH'
+      })
+
+      if (response.ok) {
+        const actualizado = await response.json()
+        setUsuarios(prev => prev.map(u =>
+          u.id === actualizado.id ? { ...u, isActive: actualizado.isActive, updatedAt: actualizado.updatedAt } : u
+        ))
+        toast.success(
+          actualizado.isActive
+            ? `${actualizado.name} fue activado`
+            : `${actualizado.name} fue desactivado`
+        )
+        setUsuarioActivacion(null)
+      } else {
+        toast.error('No se pudo cambiar el estado del usuario')
+      }
+    } catch (error) {
+      console.error('Error al cambiar el estado activo:', error)
       toast.error('Ocurrió un error al actualizar el usuario')
     } finally {
       setProcesando(false)
@@ -152,9 +195,11 @@ export default function Dashboard() {
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Email</th>
+                <th>Nacimiento</th>
                 <th>Fecha de Creación</th>
                 <th>Fecha de Actualización</th>
                 <th>Admin</th>
+                <th>Activo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -165,14 +210,21 @@ export default function Dashboard() {
                   <td>{user.id}</td>
                   <td>{user.name}</td>
                   <td>{user.email}</td>
+                  <td>{formatBirthDate(user.birthDate)}</td>
                   <td>{formatDate(user.createdAt)}</td>
                   <td>{formatDate(user.updatedAt)}</td>
                   <td>{user.isAdmin ? 'Sí' : 'No'}</td>
+                  <td>{user.isActive ? 'Sí' : 'No'}</td>
                   <td>
                     {user.id !== usuarioActual.id && (
-                      <button type="button" onClick={() => setUsuarioSeleccionado(user)}>
-                        {user.isAdmin ? 'Quitar admin' : 'Hacer admin'}
-                      </button>
+                      <>
+                        <button type="button" onClick={() => setUsuarioSeleccionado(user)}>
+                          {user.isAdmin ? 'Quitar admin' : 'Hacer admin'}
+                        </button>
+                        <button type="button" onClick={() => setUsuarioActivacion(user)}>
+                          {user.isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -191,6 +243,12 @@ export default function Dashboard() {
       <ArchivosModal
         abierto={mostrarArchivosModal}
         onCerrar={() => setMostrarArchivosModal(false)}
+      />
+      <ConfirmarActivedUserModal
+        usuario={usuarioActivacion}
+        procesando={procesando}
+        onConfirmar={confirmarCambioActivo}
+        onCancelar={() => setUsuarioActivacion(null)}
       />
     </div>
   )

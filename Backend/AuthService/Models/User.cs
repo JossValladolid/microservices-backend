@@ -107,25 +107,26 @@ public class CreateUserViewModel : IValidatableObject
     /// Nombre del usuario.
     /// </summary>
     [Required(ErrorMessage = "El nombre es obligatorio")]
-    public string? Name { get; set;}
+    public string Name { get; set;} = string.Empty;
 
     /// <summary>
     /// Email del usuario.
     /// </summary>
     [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El email no es válido")]
-    public string? Email { get; set;}
+    public string Email { get; set;} = string.Empty;
 
     /// <summary>
     /// Fecha de nacimiento del usuario.
     /// </summary>
-    public DateOnly BirthDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
+    public DateOnly? BirthDate { get; set; }
 
     /// <summary>
     /// Contraseña del usuario.
     /// </summary>
     [Required(ErrorMessage = "La contraseña es obligatoria")]
-    public string? Password { get; set;}
+    public string Password { get; set;} = string.Empty;
 
     /// <summary>
     /// Confirma la contraseña del usuario.

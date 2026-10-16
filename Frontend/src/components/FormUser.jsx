@@ -4,6 +4,7 @@ import { Toaster, toast } from 'react-hot-toast'
 export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Usuario' }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [birthDate, setBirthDate] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -18,7 +19,8 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
       return
     }
 
-    const userData = { name, email, password, passwordConfirm }
+    // el input type="date" ya entrega "YYYY-MM-DD", el formato que espera DateOnly
+    const userData = { name, email, birthDate, password, passwordConfirm }
 
     try {
       const response = await fetch('/api/User', {
@@ -33,6 +35,7 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
         toast.success('Usuario creado exitosamente')
         setName('')
         setEmail('')
+        setBirthDate('')
         setPassword('')
         setPasswordConfirm('')
 
@@ -72,6 +75,17 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
           id="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="birthDate">Fecha de nacimiento:</label>
+        <input
+          type="date"
+          id="birthDate"
+          value={birthDate}
+          max={new Date().toLocaleDateString('en-CA')}
+          onChange={(e) => setBirthDate(e.target.value)}
           required
         />
       </div>

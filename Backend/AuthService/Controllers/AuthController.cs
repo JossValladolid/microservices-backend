@@ -37,8 +37,10 @@ namespace AuthService.Controllers
         /// <returns>Los datos del usuario autenticado.</returns>
         /// <response code="200">Credenciales válidas.</response>
         /// <response code="401">Credenciales inválidas.</response>
+        /// <response code="403">Credenciales válidas pero la cuenta no está activa.</response>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [HttpPost("login")]
         public async Task<ActionResult<UserResponseDTO>> Login(LoginViewModel loginViewModel)
         {
@@ -47,6 +49,12 @@ namespace AuthService.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginViewModel.Password!, user.Password!))
             {
                 return Unauthorized(new { message = "Credenciales inválidas" });
+            }
+
+            if (!user.IsActive)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "Tu cuenta está pendiente de activación por un administrador" });
             }
 
             await _context.Sessions
@@ -77,7 +85,7 @@ namespace AuthService.Controllers
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.RefreshToken == refreshToken);
 
-            if (session == null || session.ExpiryDate <= DateTime.UtcNow)
+            if (session == null || session.ExpiryDate <= DateTime.UtcNow || !session.User!.IsActive)
             {
                 if (session != null)
                 {
