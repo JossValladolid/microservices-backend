@@ -19,7 +19,6 @@ export function useUploadFiles() {
         contentType: contentType
       })
 
-      // 1. Fetch presigned upload URL from backend
       const response = await apiFetch(`/api/files/upload-url?${params.toString()}`)
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -28,7 +27,6 @@ export function useUploadFiles() {
 
       const { uploadUrl, fileKey } = await response.json()
 
-      // 2. Direct PUT to S3 / MinIO presigned URL using standard async fetch
       const s3Response = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {

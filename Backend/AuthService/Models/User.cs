@@ -19,7 +19,7 @@ public class Session
     /// Token de la sesión.
     /// </summary>
     [Required]
-    public string? Token { get; set; }
+    public string? RefreshToken { get; set; }
 
     /// <summary>
     /// Fecha de expiración de la sesión.
@@ -54,22 +54,32 @@ public class User
     /// <summary>
     /// Nombre del usuario.
     /// </summary>
-    public string? Name { get; set;}
+    public string Name { get; set;} = string.Empty;
 
     /// <summary>
     /// Email del usuario.
     /// </summary>
-    public string? Email { get; set;}
+    public string Email { get; set;} = string.Empty;
 
     /// <summary>
     /// Contraseña del usuario.
     /// </summary>
-    public string? Password { get; set;}
+    public string Password { get; set;} = string.Empty;
+
+    /// <summary>
+    /// Fecha de nacimiento del usuario.
+    /// </summary>
+    public DateOnly BirthDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <summary>
     /// Indica si el usuario es administrador.
     /// </summary>
     public bool IsAdmin { get; set;}
+
+    /// <summary>
+    /// Indica si el usuario está activo o inactivo.
+    /// </summary>
+    public bool IsActive { get; set; } = false;
 
     /// <summary>
     /// Fecha de creación del usuario.
@@ -105,6 +115,11 @@ public class CreateUserViewModel : IValidatableObject
     [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El email no es válido")]
     public string? Email { get; set;}
+
+    /// <summary>
+    /// Fecha de nacimiento del usuario.
+    /// </summary>
+    public DateOnly BirthDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <summary>
     /// Contraseña del usuario.
@@ -151,10 +166,20 @@ public class UserResponseDTO
     public string? Email { get; set; }
 
     /// <summary>
+    /// Fecha de nacimiento del usuario.
+    /// </summary>
+    public DateOnly BirthDate { get; set; }
+
+    /// <summary>
     /// Indica si el usuario es administrador.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? IsAdmin { get; set; }
+
+    /// <summary>
+    /// Indica si el usuario está activo o inactivo.
+    /// </summary>
+    public bool? IsActive { get; set; }
 
     /// <summary>
     /// Fecha de creación del usuario.
@@ -196,11 +221,13 @@ public class UpdateUserViewModel
     /// <summary>
     /// Nombre del usuario.
     /// </summary>
+    [Required(ErrorMessage = "El nombre es obligatorio")]
     public string? Name { get; set; }
 
     /// <summary>
     /// Email del usuario.
     /// </summary>
+    [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El email no es válido")]
     public string? Email { get; set; }
 
