@@ -49,6 +49,7 @@ namespace AuthService.Controllers
             {
                 Id = user.Id,
                 Name = user.Name,
+                UserName = user.UserName,
                 Email = user.Email,
                 BirthDate = user.BirthDate,
                 IsActive = user.IsActive,
@@ -113,6 +114,7 @@ namespace AuthService.Controllers
             {
                 Id = existingUser.Id,
                 Name = existingUser.Name,
+                UserName = existingUser.UserName,
                 Email = existingUser.Email,
                 BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
@@ -166,6 +168,7 @@ namespace AuthService.Controllers
             {
                 Id = existingUser.Id,
                 Name = existingUser.Name,
+                UserName = existingUser.UserName,
                 Email = existingUser.Email,
                 BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
@@ -198,6 +201,11 @@ namespace AuthService.Controllers
             existingUser.IsActive = true;
             existingUser.UpdatedAt = DateTime.UtcNow;
 
+            if (!await _context.Folders.IgnoreQueryFilters().AnyAsync(f => f.OwnerId == id && f.ParentId == null))
+            {
+                _context.Folders.Add(new Folder { OwnerId = id, Name = existingUser.UserName });
+            }
+
             try
             {
                 await _context.SaveChangesAsync();
@@ -217,6 +225,7 @@ namespace AuthService.Controllers
             {
                 Id = existingUser.Id,
                 Name = existingUser.Name,
+                UserName = existingUser.UserName,
                 Email = existingUser.Email,
                 BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
@@ -267,6 +276,7 @@ namespace AuthService.Controllers
             {
                 Id = existingUser.Id,
                 Name = existingUser.Name,
+                UserName = existingUser.UserName,
                 Email = existingUser.Email,
                 BirthDate = existingUser.BirthDate,
                 IsAdmin = existingUser.IsAdmin,
@@ -298,6 +308,7 @@ namespace AuthService.Controllers
             {
                 Id = user.Id,
                 Name = user.Name,
+                UserName = user.UserName,
                 Email = user.Email,
                 BirthDate = user.BirthDate,
                 CreatedAt = user.CreatedAt,
@@ -339,9 +350,9 @@ namespace AuthService.Controllers
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                return Conflict(new { message = "Ya existe un usuario con ese email" });
+                return Conflict(new { message = UniqueViolationMessage(ex) });
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -379,6 +390,7 @@ namespace AuthService.Controllers
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserViewModel.Password!);
 
             newUser.Name = createUserViewModel.Name;
+            newUser.UserName = UserNames.Normalize(createUserViewModel.UserName);
             newUser.Email = createUserViewModel.Email;
             newUser.Password = hashedPassword;
             newUser.BirthDate = createUserViewModel.BirthDate!.Value;
@@ -390,15 +402,16 @@ namespace AuthService.Controllers
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                return Conflict(new { message = "Ya existe un usuario con ese email" });
+                return Conflict(new { message = UniqueViolationMessage(ex) });
             }
 
             var responseUser = new UserResponseDTO
             {
                 Id = newUser.Id,
                 Name = newUser.Name,
+                UserName = newUser.UserName,
                 Email = newUser.Email,
                 BirthDate = newUser.BirthDate,
                 CreatedAt = newUser.CreatedAt,
@@ -439,10 +452,17 @@ namespace AuthService.Controllers
             return _context.Users.Any(e => e.Id == id);
         }
 
-        private static bool IsUniqueEmailViolation(DbUpdateException ex)
+        private static bool IsUniqueViolation(DbUpdateException ex)
         {
             return ex.InnerException is PostgresException pgEx
                 && pgEx.SqlState == PostgresErrorCodes.UniqueViolation;
+        }
+
+        private static string UniqueViolationMessage(DbUpdateException ex)
+        {
+            return ex.InnerException is PostgresException { ConstraintName: var constraint } && constraint?.Contains("UserName") == true
+                ? "Ya existe un usuario con ese nombre de usuario"
+                : "Ya existe un usuario con ese email";
         }
     }
 }

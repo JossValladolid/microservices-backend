@@ -3,6 +3,7 @@ import { Toaster, toast } from 'react-hot-toast'
 
 export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Usuario' }) {
   const [name, setName] = useState('')
+  const [userName, setUserName] = useState('')
   const [email, setEmail] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [password, setPassword] = useState('')
@@ -20,7 +21,7 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
     }
 
     // el input type="date" ya entrega "YYYY-MM-DD", el formato que espera DateOnly
-    const userData = { name, email, birthDate, password, passwordConfirm }
+    const userData = { name, userName, email, birthDate, password, passwordConfirm }
 
     try {
       const response = await fetch('/api/User', {
@@ -34,6 +35,7 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
       if (response.ok) {
         toast.success('Usuario creado exitosamente')
         setName('')
+        setUserName('')
         setEmail('')
         setBirthDate('')
         setPassword('')
@@ -42,7 +44,9 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
         onUserCreated?.()
 
       } else {
-        toast.error(`Error al crear el usuario.`)
+        const errorData = await response.json().catch(() => ({}))
+        const detalle = errorData.message || Object.values(errorData.errors ?? {}).flat()[0]
+        toast.error(detalle || 'Error al crear el usuario.')
       }
     } catch (error) {
       console.error('Error al crear el usuario:', error)
@@ -65,6 +69,18 @@ export default function FormUser({ onUserCreated, onCancelar, titulo = 'Crear Us
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <label htmlFor="userName">Nombre de usuario (nombre de tu carpeta):</label>
+        <input
+          type="text"
+          id="userName"
+          value={userName}
+          onChange={(e) => setUserName(e.target.value.toLowerCase())}
+          pattern="[a-z0-9_\-]{3,30}"
+          title="De 3 a 30 caracteres: letras minúsculas, números, - y _"
           required
         />
       </div>

@@ -139,8 +139,12 @@ export default function Dashboard() {
     if (!file) return
 
     try {
-      const result = await uploadFile(file)
-      toast.success(`Archivo "${result.fileName}" subido exitosamente`)
+      const homeResponse = await apiFetch('/api/folders/home')
+      if (!homeResponse.ok) throw new Error('No se pudo obtener tu carpeta home')
+      const home = await homeResponse.json()
+
+      const result = await uploadFile(file, home.id)
+      toast.success(`Archivo "${result.fileName}" subido a tu carpeta home`)
     } catch (error) {
       console.error('Error al subir el archivo:', error)
       toast.error(error.message || 'Error al subir el archivo')
