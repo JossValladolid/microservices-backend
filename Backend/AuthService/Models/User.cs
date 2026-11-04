@@ -57,6 +57,11 @@ public class User
     public string Name { get; set;} = string.Empty;
 
     /// <summary>
+    /// Nombre de usuario único (minúsculas). Da nombre a la carpeta home del usuario.
+    /// </summary>
+    public string UserName { get; set;} = string.Empty;
+
+    /// <summary>
     /// Email del usuario.
     /// </summary>
     public string Email { get; set;} = string.Empty;
@@ -99,6 +104,30 @@ public class User
 }
 
 /// <summary>
+/// Reglas del nombre de usuario (nombre de la carpeta home).
+/// </summary>
+public static class UserNames
+{
+    private static readonly HashSet<string> Reserved = new(StringComparer.Ordinal)
+    {
+        "admin", "root", "api", "files", "images", "storage", "home", "system"
+    };
+
+    /// <summary>
+    /// Normaliza el nombre de usuario (sin espacios laterales y en minúsculas).
+    /// </summary>
+    public static string Normalize(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
+
+    /// <summary>
+    /// Indica si un nombre ya normalizado es válido: 3 a 30 caracteres de a-z, 0-9, guion y guion bajo, y no reservado.
+    /// </summary>
+    public static bool IsValid(string normalized) =>
+        normalized.Length is >= 3 and <= 30
+        && normalized.All(c => c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-' or '_')
+        && !Reserved.Contains(normalized);
+}
+
+/// <summary>
 /// Modelo de vista para la creación de un usuario.
 /// </summary>
 public class CreateUserViewModel : IValidatableObject
@@ -108,6 +137,12 @@ public class CreateUserViewModel : IValidatableObject
     /// </summary>
     [Required(ErrorMessage = "El nombre es obligatorio")]
     public string Name { get; set;} = string.Empty;
+
+    /// <summary>
+    /// Nombre de usuario único; será el nombre de su carpeta home.
+    /// </summary>
+    [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+    public string UserName { get; set;} = string.Empty;
 
     /// <summary>
     /// Email del usuario.
@@ -141,6 +176,11 @@ public class CreateUserViewModel : IValidatableObject
     /// <returns></returns>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (!UserNames.IsValid(UserNames.Normalize(UserName)))
+        {
+          yield return new ValidationResult("El nombre de usuario debe tener de 3 a 30 caracteres (a-z, 0-9, - y _) y no ser reservado", [nameof(UserName)]);
+        }
+
         if (Password != PasswordConfirm)
         {
           yield return new ValidationResult("Las contraseñas deben coincidir", [nameof(PasswordConfirm)]);
@@ -161,6 +201,12 @@ public class UserResponseDTO
     /// Nombre del usuario.
     /// </summary>
     public string? Name { get; set; }
+
+    /// <summary>
+    /// Nombre de usuario único.
+    /// </summary>
+    public string? UserName { get; set; }
+
     /// <summary>
     /// Email del usuario.
     /// </summary>

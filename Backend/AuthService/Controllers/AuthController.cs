@@ -187,6 +187,7 @@ namespace AuthService.Controllers
         {
             Id = user.Id,
             Name = user.Name,
+            UserName = user.UserName,
             Email = user.Email,
             BirthDate = user.BirthDate,
             IsAdmin = user.IsAdmin

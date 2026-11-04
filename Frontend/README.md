@@ -15,7 +15,32 @@ npm run lint     # eslint
 
 Requiere que `authservice` esté corriendo en el puerto `5098` (ver `docker-compose.yml` en la raíz del repo) para que el login y las peticiones a `/api/*` funcionen.
 
-## Mapa del archivo `src/App.jsx`
+## Estructura actual de `src/`
+
+```
+main.jsx                    ← monta <BrowserRouter> + <AuthProvider> y define las rutas
+api.js                      ← apiFetch (peticiones a /api con renovación de sesión) y alExpirarSesion
+context/AuthContext.jsx     ← AuthProvider + hook useAuth(): usuarioActual, verificando, iniciarSesion, cerrarSesion
+routes/ProtectedRoute.jsx   ← exige sesión; si no hay, redirige a /login
+routes/PublicRoute.jsx      ← solo sin sesión (/login, /registro); si ya hay, redirige a /home
+pages/                      ← Login, Register, Dashboard
+components/                 ← FormUser (incluye el nombre de usuario), ConfirmarAdminModal, ConfirmarActivedUserModal, ArchivosModal
+hooks/uploadFiles.jsx       ← useUploadFiles: subida de archivos a MinIO con URL prefirmada
+```
+
+Rutas (`main.jsx`): `/login` y `/registro` (envueltas en `PublicRoute`), `/home` (envuelta en `ProtectedRoute`) y cualquier otra ruta redirige a `/home`. Mientras `AuthProvider` consulta `/api/Auth/me` (`verificando`), ambos guards muestran "Cargando..." para no redirigir antes de saber si hay sesión.
+
+### Archivos (MinIO)
+
+- **Subir** (`hooks/uploadFiles.jsx`): calcula el SHA-256 del archivo (`utils/sha256.js`), pide `GET /api/files/upload-url?fileName=&contentType=&sha256=` (vía `apiFetch`) y recibe `{ uploadUrl, fileId, uploadHeaders }`; hace `fetch(uploadUrl, { method: 'PUT', headers: uploadHeaders, body: file })` **directo a MinIO** (sin cookies) con los headers firmados tal cual, y termina con `POST /api/files/{fileId}/confirm`.
+- **Explorar** (`components/ArchivosModal.jsx`): empieza en la raíz (los homes de los usuarios) y navega con breadcrumb usando `GET /api/folders?parentId=`, `GET /api/folders/{id}` y `GET /api/files?folderId=`. "Subir aquí" y "Nueva carpeta" solo aparecen en carpetas propias; "Eliminar" aparece en lo propio o si eres admin (un admin puede borrar carpetas con contenido; el resto solo vacías). El botón "Subir archivo" del Dashboard sube a tu home (`GET /api/folders/home`).
+- **Ver / descargar** (`GET /api/files/{id}/download-url`): descarga el blob y verifica que su SHA-256 coincida con el registrado antes de mostrarlo o guardarlo.
+- Requiere contexto seguro (HTTPS o `localhost`) para `crypto.subtle`, y carga el archivo completo en memoria.
+- Explicación completa de las URLs prefirmadas y la firma en [`../Backend/docs/minio-explicado.md`](../Backend/docs/minio-explicado.md).
+
+> ⚠️ Las secciones de abajo (desde "Mapa del archivo `src/App.jsx`") son apuntes de aprendizaje de React de una versión anterior, cuando todo vivía en un solo `App.jsx` con `DashboardUsuarios`. Los conceptos de React siguen valiendo, pero la estructura de componentes, el estado de sesión en memoria y el cambio login/registro por `vista` ya no existen tal cual: hoy se usan rutas, `AuthContext` y cookies.
+
+## Mapa del archivo `src/App.jsx` (versión anterior)
 
 Todo vive en un solo archivo, con 4 componentes:
 
@@ -242,5 +267,5 @@ Flujo completo de ejemplo (clic por clic):
 
 ## Cosas pendientes / a mejorar (notas para después)
 
-- No hay persistencia de sesión (si recargas la página, `usuarioActual` vuelve a `null`) — hoy vive solo en memoria de React.
+- ~~No hay persistencia de sesión~~ — resuelto: la sesión va en cookies `HttpOnly` y `AuthProvider` la restaura con `/api/Auth/me` al cargar.
 - No hay manejo de roles más allá de `isAdmin` en el formulario de registro del dashboard (cualquier campo `isAdmin` real se define en el backend, no aquí).

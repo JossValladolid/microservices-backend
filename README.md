@@ -12,7 +12,7 @@ Arquitectura de microservicios construida con **ASP.NET Core (.NET 10)**, **Enti
 │   ├── nginx/
 │   │   ├── nginx.conf        # Reverse proxy: HTTP/HTTPS, /api/ → API, /images/ → MinIO S3, / → Vite
 │   │   └── certs/            # Certificados SSL generados automáticamente por certs-init
-│   ├── docs/
+│   ├── docs/             # jwt-explicado.md, docker-explicado.md, minio-explicado.md
 │   └── AuthService/          # Microservicio de autenticación / usuarios / archivos (S3)
 │       ├── Dockerfile        # targets: dev (dotnet watch) y final (publish)
 │       ├── AuthService.csproj
@@ -105,14 +105,25 @@ openssl rand -base64 48
 - Como las cookies son `Secure`, solo viajan por HTTPS: usa `https://localhost` (nginx) en lugar de `http://localhost:5098` para probar el login desde el navegador.
 - Más detalle del flujo completo en [`Backend/docs/jwt-explicado.md`](Backend/docs/jwt-explicado.md).
 
+#### Archivos (MinIO / URLs prefirmadas)
+
+- `FilesController` (`/api/files`) no sube ni descarga archivos: entrega **URLs prefirmadas** y el navegador habla directo con MinIO (a través de nginx).
+- `FilesController` y `FoldersController` exigen sesión de una cuenta activa. Cada archivo tiene una fila en `Files` (propietario, carpeta, nombre, tipo, tamaño, SHA-256, estado) y las carpetas viven en `Folders` (lista de adyacencia con `ParentId`); en MinIO los objetos son planos: la key es solo el `fileId`, sin prefijos.
+- Cada usuario tiene un `UserName` único (se pide al registrarse) y, al ser activado, una **carpeta home** con ese nombre. No se sube nada a la raíz: solo a carpetas propias.
+- Permisos: todos los usuarios activos pueden ver y descargar todo; solo el propietario sube y crea carpetas en lo suyo; borrar un archivo lo puede el propietario o un admin; una carpeta con contenido solo la borra un admin (recursivo, incluidos los objetos de MinIO), y el propietario solo puede borrar las vacías. Las homes no se borran.
+- Los usuarios no se borran, se desactivan: su contenido se oculta automáticamente (filtro de consulta sobre `Owner.IsActive`) y reaparece al reactivarlos.
+- Endpoints: `GET /api/files?folderId=`, `GET /api/files/upload-url` (URL `PUT` de 15 min; el SHA-256 va firmado en la URL y MinIO rechaza la subida si el contenido no coincide), `POST /api/files/{id}/confirm`, `GET /api/files/{id}/download-url` (30 min; el frontend recalcula el hash tras descargar), `DELETE /api/files/{id}`, y `GET /api/folders/home`, `GET /api/folders?parentId=`, `GET /api/folders/{id}`, `POST /api/folders`, `DELETE /api/folders/{id}`.
+- El nombre del bucket (`MINIO_DEFAULT_BUCKET`) debe ser `images` o `files`, porque nginx solo enruta esas rutas a MinIO.
+- Detalle completo (firma, nginx, flujo del frontend y puntos pendientes de seguridad) en [`Backend/docs/minio-explicado.md`](Backend/docs/minio-explicado.md).
+
 #### Usuarios demo (seed)
 
 `docker-compose.yml` define `SEED_DEMO_USERS: "true"` para `authservice`, lo que inserta al arrancar los usuarios de `Backend/AuthService/Seed/seed_users.sql`:
 
-| Email | Contraseña | Rol |
-|---|---|---|
-| `admin@example.com` | `Admin123!` | Admin |
-| `usuario@example.com` | `Usuario123!` | Usuario |
+| Email | UserName | Contraseña | Rol |
+|---|---|---|---|
+| `admin@example.com` | `admin` | `Admin123!` | Admin |
+| `usuario@example.com` | `usuario` | `Usuario123!` | Usuario |
 
 > Solo para desarrollo. Quita o pon en `false` `SEED_DEMO_USERS` en cualquier entorno real.
 
@@ -146,7 +157,7 @@ No hace falta compilar el frontend ni instalar nada en tu máquina: todo corre e
 - **`nginx`**: punto de entrada unificado para todos los dispositivos. Puerto **80** (HTTP) y puerto **443** (HTTPS):
   - `/` → frontend de React
   - `/api/` → microservicio de autenticación
-  - `/images/` → almacenamiento de objetos MinIO S3 (Path-Style)
+  - `/images/` y `/files/` → almacenamiento de objetos MinIO S3 (Path-Style); aquí llegan las URLs prefirmadas
   - `/storage/` → consola de administración de MinIO
 
 ### 4. Acceso desde otros dispositivos y redes (LAN)
@@ -164,7 +175,7 @@ Para acceder a la aplicación desde tu teléfono, tablet u otra computadora en l
    - **HTTPS**: `https://192.168.1.99`
    - **Vite Dev directo**: `http://192.168.1.99:5173`
 
-> Las URLs prefirmadas de subida y descarga de archivos de S3 se generan dinámicamente usando el host y protocolo con el que te conectas, por lo que subir y descargar archivos funciona en cualquier interfaz o IP automáticamente.
+> Las URLs prefirmadas de subida y descarga se firman con `MINIO_PUBLIC_URL` (por defecto `https://localhost`), **no** con el host desde el que te conectas. Esa variable aún no está en `docker-compose.yml`; para subir/descargar archivos desde otro dispositivo de la LAN, pásala al servicio `authservice` (ej. `MINIO_PUBLIC_URL: https://${PUBLIC_HOST}`). Ver [`Backend/docs/minio-explicado.md`](Backend/docs/minio-explicado.md).
 
 ### 5. Verifica que responde
 
