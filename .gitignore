@@ -483,4 +483,8 @@ $RECYCLE.BIN/
 Backend/nginx/certs/*.pem
 Backend/nginx/certs/*.crt
 Backend/nginx/certs/*.key
+Proxy/nginx/certs/*.pem
+Proxy/nginx/certs/*.crt
+Proxy/nginx/certs/*.key
+*.tar
 Frontend/dist/
