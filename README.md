@@ -6,13 +6,18 @@ Arquitectura de microservicios construida con **ASP.NET Core (.NET 10)**, **Enti
 
 ```
 .
-├── docker-compose.yml        # Orquesta frontend + backend + DBs + MinIO + nginx
+├── docker-compose.yml        # Orquesta frontend + backend + DBs + MinIO + nginx (desarrollo)
+├── docker-compose.prod.yml   # Versión standalone/offline (corre directo desde las imágenes)
+├── setup-and-run.sh          # Script de despliegue offline en un solo comando
 ├── .env / .env.example       # Variables de entorno y configuración de red
-├── Backend/
+├── Proxy/
 │   ├── nginx/
 │   │   ├── nginx.conf        # Reverse proxy: HTTP/HTTPS, /api/ → API, /images/ → MinIO S3, / → Vite
+│   │   ├── locations.conf    # Reglas de ruteo y CORS
 │   │   └── certs/            # Certificados SSL generados automáticamente por certs-init
-│   ├── docs/             # jwt-explicado.md, docker-explicado.md, minio-explicado.md
+│   └── certs-init/           # Imagen ligera con OpenSSL preinstalado para modo offline
+├── Backend/
+│   ├── docs/                 # jwt-explicado.md, docker-explicado.md, minio-explicado.md
 │   └── AuthService/          # Microservicio de autenticación / usuarios / archivos (S3)
 │       ├── Dockerfile        # targets: dev (dotnet watch) y final (publish)
 │       ├── AuthService.csproj
@@ -131,8 +136,8 @@ openssl rand -base64 48
 
 ```bash
 mkcert -install
-mkdir -p Backend/nginx/certs
-cd Backend/nginx/certs
+mkdir -p Proxy/nginx/certs
+cd Proxy/nginx/certs
 mkcert localhost 127.0.0.1 ::1
 cd ../../..
 ```
@@ -152,7 +157,7 @@ No hace falta compilar el frontend ni instalar nada en tu máquina: todo corre e
 - **`authservice`**: la API (target `dev`, corre con `dotnet watch`). Expuesta en `http://localhost:5098`. Al arrancar aplica migraciones automáticamente.
 - **`minio`**: servidor de almacenamiento de objetos compatible con AWS S3. Expuesto en puerto **9000** (S3 API) y **9002** (consola administrativa).
 - **`minio-init`**: contenedor que inicializa automáticamente el usuario de servicio (`MINIO_SERVICE_USER`), la política de lectura/escritura, el bucket predeterminado (`images`) y las credenciales de servicio.
-- **`certs-init`**: genera automáticamente los certificados SSL locales en `Backend/nginx/certs` con SAN para `localhost`, `127.0.0.1` y cualquier IP/dominio configurado en `PUBLIC_HOST`.
+- **`certs-init`**: genera automáticamente los certificados SSL locales en `Proxy/nginx/certs` con SAN para `localhost`, `127.0.0.1` y cualquier IP/dominio configurado en `PUBLIC_HOST`.
 - **`frontend`**: Vite (`npm run dev`) con hot reload, expuesto en `http://localhost:5173`.
 - **`nginx`**: punto de entrada unificado para todos los dispositivos. Puerto **80** (HTTP) y puerto **443** (HTTPS):
   - `/` → frontend de React
@@ -283,3 +288,52 @@ Por defecto usa el perfil `http` de `Properties/launchSettings.json`, disponible
 > `launchSettings.json` también trae un perfil `https` (puerto 7257) generado automáticamente al crear el proyecto, pero `dotnet run` no lo usa a menos que lo pidas explícitamente con `dotnet run --launch-profile https`. En este proyecto el HTTPS real se maneja con nginx (ver arriba), así que normalmente no hace falta tocar ese perfil.
 
 En desarrollo, la documentación interactiva (Scalar) queda disponible en `/scalar` sobre la URL base.
+
+---
+
+## Opción C: Despliegue Offline / Standalone (sin internet y sin código fuente)
+
+Esta opción permite empaquetar la aplicación completa en una máquina con internet para llevarla a una PC nueva y levantar todo **100% offline**, sin compilar y sin necesidad de copiar las carpetas de código fuente (`Backend/` ni `Frontend/`).
+
+### 1. Empaquetar imágenes en la máquina principal (con internet)
+
+Asegúrate de tener las imágenes construidas y guárdalas en un archivo `images.tar`:
+
+```bash
+docker save -o images.tar \
+  microservices-certs-init:latest \
+  microservices-backend-authservice:latest \
+  microservices-backend-frontend:latest \
+  firstfinger/minio:latest \
+  nginx:alpine \
+  postgres:16-alpine
+```
+
+### 2. Archivos necesarios para la máquina nueva
+
+Copia a una memoria USB (o empaqueta en un archivo) únicamente los siguientes archivos:
+
+* `images.tar` (imágenes de Docker exportadas)
+* `docker-compose.prod.yml` (orquestación standalone sin volúmenes locales)
+* `setup-and-run.sh` (script de arranque en un solo paso)
+* `Proxy/` (configuraciones de Nginx y generador de certificados)
+* `.env` (o `.env.example`)
+
+> **Nota:** No es necesario copiar `Backend/` ni `Frontend/`. Todo el código compilado y dependencias ya viajan dentro de las imágenes de Docker.
+
+### 3. Levantar en la máquina nueva (sin internet)
+
+En la máquina destino, abre una terminal en la carpeta donde colocaste los archivos y ejecuta:
+
+```bash
+./setup-and-run.sh
+```
+
+*(O `bash setup-and-run.sh` si tu sistema de archivos en Windows/USB no preservó el permiso `+x`).*
+
+El script se encargará automáticamente de:
+1. Comprobar que Docker esté activo y con permisos.
+2. Crear el archivo `.env` a partir de `.env.example` si no existiera.
+3. Cargar las imágenes a Docker mediante `docker load -i images.tar`.
+4. Generar los certificados SSL locales de forma offline gracias a `microservices-certs-init`.
+5. Levantar todos los servicios con `docker-compose.prod.yml`.
