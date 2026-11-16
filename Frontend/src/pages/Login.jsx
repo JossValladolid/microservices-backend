@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router'
+import { useNavigate, useLocation, Link } from 'react-router'
 import { Toaster, toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -9,6 +9,8 @@ export default function Login() {
   const [cargando, setCargando] = useState(false)
   const { iniciarSesion } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const registrado = location.state?.registrado
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -31,12 +33,16 @@ export default function Login() {
       } else if (response.status === 403) {
         const { message } = await response.json().catch(() => ({}))
         toast.error(message || 'Tu cuenta está pendiente de activación')
+      } else if (response.status === 401) {
+        toast.error('Correo o contraseña incorrectos')
+      } else if (response.status >= 500) {
+        toast.error('El servidor no está disponible, intenta más tarde')
       } else {
-        toast.error('Credenciales inválidas')
+        toast.error('No se pudo iniciar sesión')
       }
     } catch (error) {
       console.error('Error al iniciar sesión:', error)
-      toast.error('Ocurrió un error al iniciar sesión')
+      toast.error('No se pudo conectar con el servidor')
     } finally {
       setCargando(false)
     }
@@ -45,6 +51,12 @@ export default function Login() {
   return (
     <div className="auth">
       <Toaster position="top-center" />
+
+      {registrado && (
+        <p className="aviso" role="status">
+          Cuenta creada. Un administrador debe activarla antes de que puedas entrar.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit}>
         <h2>Iniciar sesión</h2>
