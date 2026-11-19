@@ -169,21 +169,19 @@ export default function Dashboard() {
           </span>
           <p>inición sesiada como <strong>{usuarioActual.name}</strong></p>
         </div>
-        <div className="acciones">
-          {!esAdmin && (
-            <>
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={manejarArchivoSeleccionado}
-              />
-              <button type="button" className="btn-primario" onClick={subirArchivo} disabled={uploading}>
-                {uploading ? 'Subiendo...' : 'Subir archivo'}
-              </button>
-              <button type="button" onClick={verArchivos}>Ver mis archivos</button>
-            </>
-          )}
+        <div className="acciones">         
+            
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={manejarArchivoSeleccionado}
+          />
+          <button type="button" className="btn-primario" onClick={subirArchivo} disabled={uploading}>
+            {uploading ? 'Subiendo...' : 'Subir archivo'}
+          </button>
+          <button type="button" onClick={verArchivos}>Ver mis archivos</button>
+        
           <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
         </div>
       </header>
@@ -275,12 +273,12 @@ export default function Dashboard() {
         onConfirmar={confirmarCambioAdmin}
         onCancelar={() => setUsuarioSeleccionado(null)}
       />
-      {!esAdmin && (
-        <ArchivosModal
-          abierto={mostrarArchivosModal}
-          onCerrar={() => setMostrarArchivosModal(false)}
-        />
-      )}
+
+      <ArchivosModal
+        abierto={mostrarArchivosModal}
+        onCerrar={() => setMostrarArchivosModal(false)}
+      />
+      
       <ConfirmarActivedUserModal
         usuario={usuarioActivacion}
         procesando={procesando}
