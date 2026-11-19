@@ -1,65 +1,29 @@
 :root {
-  --bg: #f3f5f4;
-  --surface: #ffffff;
-  --surface-2: #f6f8f7;
-  --text: #16211f;
-  --muted: #5d6b67;
-  --border: #dde3e0;
-  --accent: #0f766e;
-  --accent-hover: #0b5f58;
-  --accent-soft: #dff1ee;
-  --accent-text: #0b5f58;
-  --on-accent: #ffffff;
-  --warn-soft: #fdf0d5;
-  --warn-text: #8a5a00;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(16, 33, 31, 0.06), 0 6px 20px rgba(16, 33, 31, 0.05);
+  --text: #1a1a1a;
+  --muted: #666;
+  --bg: #fff;
+  --border: #d9d9d9;
 
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1514;
-    --surface: #172120;
-    --surface-2: #1d2a28;
-    --text: #e6efed;
-    --muted: #93a39f;
-    --border: #2a3a37;
-    --accent: #2dd4bf;
-    --accent-hover: #5eead4;
-    --accent-soft: #123a35;
-    --accent-text: #7ee0d3;
-    --on-accent: #04221f;
-    --warn-soft: #3a2d0f;
-    --warn-text: #f3c969;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
-  }
-}
-
-* {
-  box-sizing: border-box;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
 }
 
 #root {
-  max-width: 1080px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: 24px;
 }
 
 h2 {
   margin: 0 0 16px;
-  font-size: 1.375rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 h3 {
@@ -72,11 +36,6 @@ p {
   margin: 0;
 }
 
-a {
-  color: var(--accent-text);
-  font-weight: 500;
-}
-
 hr {
   margin: 24px 0;
   border: 0;
@@ -84,77 +43,62 @@ hr {
 }
 
 label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 input {
-  padding: 9px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: 4px;
+  background: #fff;
   color: inherit;
   font: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+  border-color: var(--text);
 }
 
 button {
   padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  border: 1px solid var(--text);
+  border-radius: 4px;
+  background: #fff;
   color: var(--text);
   font: inherit;
-  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
 }
 
-button:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: var(--muted);
+button:hover {
+  background: #f2f2f2;
 }
 
 button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--text);
   outline-offset: 2px;
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
 }
 
-button[type='submit'],
-button.btn-primario {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+button[type='submit'] {
+  background: var(--text);
+  color: #fff;
 }
 
-button[type='submit']:hover:not(:disabled),
-button.btn-primario:hover:not(:disabled) {
-  border-color: var(--accent-hover);
-  background: var(--accent-hover);
+button[type='submit']:hover:not(:disabled) {
+  background: #333;
 }
 
 button.enlace {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent-text);
   text-decoration: underline;
-}
-
-button.enlace:hover:not(:disabled) {
-  background: none;
 }
 
 form {
@@ -165,16 +109,9 @@ form > div {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 form button[type='submit'] {
   width: 100%;
-  padding: 10px 14px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-  }
 }

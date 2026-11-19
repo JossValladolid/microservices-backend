@@ -32,9 +32,6 @@ export default function Dashboard() {
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null)
   const [usuarioActivacion, setUsuarioActivacion] = useState(null)
   const [procesando, setProcesando] = useState(false)
-  const [mostrarArchivosModal, setMostrarArchivosModal] = useState(false)
-  const fileInputRef = useRef(null)
-  const { uploadFile, uploading } = useUploadFiles()
 
   const esAdmin = usuarioActual?.isAdmin
 
@@ -59,8 +56,6 @@ export default function Dashboard() {
     }
     cargarUsuarios()
   }, [recargar, esAdmin])
-
-  if (!usuarioActual) return null
 
   const manejarNuevoUsuario = () => {
     setRecargar(!recargar)
@@ -132,6 +127,9 @@ export default function Dashboard() {
     }
   }
 
+  const fileInputRef = useRef(null)
+  const { uploadFile, uploading } = useUploadFiles()
+
   const subirArchivo = () => {
     fileInputRef.current?.click()
   }
@@ -155,6 +153,8 @@ export default function Dashboard() {
     }
   }
 
+  const [mostrarArchivosModal, setMostrarArchivosModal] = useState(false)
+
   const verArchivos = () => {
     setMostrarArchivosModal(true)
   }
@@ -162,123 +162,92 @@ export default function Dashboard() {
   return (
     <div>
       <Toaster position="top-center" />
-      <header className="barra">
-        <div className="usuario">
-          <span className="avatar" aria-hidden="true">
-            {usuarioActual.name?.charAt(0).toUpperCase()}
-          </span>
-          <p>inición sesiada como <strong>{usuarioActual.name}</strong></p>
-        </div>
-        <div className="acciones">         
-            
+      <div className="barra">
+        <p>inición sesiada como {usuarioActual.name}</p>
+        <div className="acciones">
           <input
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
             onChange={manejarArchivoSeleccionado}
           />
-          <button type="button" className="btn-primario" onClick={subirArchivo} disabled={uploading}>
+          <button type="button" onClick={subirArchivo} disabled={uploading}>
             {uploading ? 'Subiendo...' : 'Subir archivo'}
           </button>
           <button type="button" onClick={verArchivos}>Ver mis archivos</button>
-        
           <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
         </div>
-      </header>
-
-      {esAdmin && (
-        <section className="panel panel-form">
+      </div>
+      {
+        esAdmin && (
           <FormUser titulo="Registrar nuevo usuario" onUserCreated={manejarNuevoUsuario} />
-        </section>
-      )}
+        )
+      }
+        <hr />
 
       {!esAdmin ? (
-        <section className="panel">
-          <p className="vacio">Imaginemos que aquí ya está el contenido para usuarios que no son admins xd.</p>
-        </section>
+        <p>Imaginemos que aquí ya está el contenido para usuarios que no son admins xd.</p>
       ) : (
-        <section className="panel">
-          <div className="panel-encabezado">
-            <h2>Usuarios</h2>
-            {!cargando && <span className="contador">{usuarios.length} en total</span>}
-          </div>
-          {cargando ? (
-            <p className="vacio">Cargando usuarios...</p>
-          ) : usuarios.length === 0 ? (
-            <p className="vacio">Todavía no hay usuarios registrados.</p>
-          ) : (
-            <div className="tabla-scroll">
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Nacimiento</th>
-                    <th>Fecha de Creación</th>
-                    <th>Fecha de Actualización</th>
-                    <th>Admin</th>
-                    <th>Activo</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
+        <div>
+        <h2>Usuarios</h2>
+        {cargando ? (
+          <p>Cargando usuarios...</p>
+        ) : (
+          <table className="tabla">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Nacimiento</th>
+                <th>Fecha de Creación</th>
+                <th>Fecha de Actualización</th>
+                <th>Admin</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
 
-                <tbody>
-                  {usuarios.map(user => (
-                    <tr key={user.id} className={user.isActive ? '' : 'pendiente'}>
-                      <td className="id" title={user.id}>{user.id.slice(0, 8)}</td>
-                      <td>{user.name}</td>
-                      <td>{user.email}</td>
-                      <td>{formatBirthDate(user.birthDate)}</td>
-                      <td>{formatDate(user.createdAt)}</td>
-                      <td>{formatDate(user.updatedAt)}</td>
-                      <td>
-                        <span className={`badge ${user.isAdmin ? 'badge-si' : 'badge-no'}`}>
-                          {user.isAdmin ? 'Sí' : 'No'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${user.isActive ? 'badge-si' : 'badge-alerta'}`}>
-                          {user.isActive ? 'Sí' : 'No'}
-                        </span>
-                      </td>
-                      <td>
-                        {user.id !== usuarioActual.id && (
-                          <div className="acciones-fila">
-                            <button type="button" className="btn-sm" onClick={() => setUsuarioSeleccionado(user)}>
-                              {user.isAdmin ? 'Quitar admin' : 'Hacer admin'}
-                            </button>
-                            <button
-                              type="button"
-                              className={user.isActive ? 'btn-sm' : 'btn-sm btn-primario'}
-                              onClick={() => setUsuarioActivacion(user)}
-                            >
-                              {user.isActive ? 'Desactivar' : 'Activar'}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+            <tbody>
+              {usuarios.map(user => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{formatBirthDate(user.birthDate)}</td>
+                  <td>{formatDate(user.createdAt)}</td>
+                  <td>{formatDate(user.updatedAt)}</td>
+                  <td>{user.isAdmin ? 'Sí' : 'No'}</td>
+                  <td>{user.isActive ? 'Sí' : 'No'}</td>
+                  <td>
+                    {user.id !== usuarioActual.id && (
+                      <>
+                        <button type="button" onClick={() => setUsuarioSeleccionado(user)}>
+                          {user.isAdmin ? 'Quitar admin' : 'Hacer admin'}
+                        </button>
+                        <button type="button" onClick={() => setUsuarioActivacion(user)}>
+                          {user.isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        </div>
       )}
-
       <ConfirmarAdminModal
         usuario={usuarioSeleccionado}
         procesando={procesando}
         onConfirmar={confirmarCambioAdmin}
         onCancelar={() => setUsuarioSeleccionado(null)}
       />
-
       <ArchivosModal
         abierto={mostrarArchivosModal}
         onCerrar={() => setMostrarArchivosModal(false)}
       />
-      
       <ConfirmarActivedUserModal
         usuario={usuarioActivacion}
         procesando={procesando}

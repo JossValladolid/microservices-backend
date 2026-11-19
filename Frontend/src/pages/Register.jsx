@@ -8,7 +8,7 @@ export default function Register() {
     <div className="auth">
       <FormUser
         titulo="Crear cuenta"
-        onUserCreated={() => navigate('/login', { state: { registrado: true } })}
+        onUserCreated={() => navigate('/login')}
         onCancelar={() => navigate('/login')}
       />
     </div>
