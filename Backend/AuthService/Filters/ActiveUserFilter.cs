@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AuthService.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,13 @@ public class ActiveUserFilter(AuthServiceContext context) : IAsyncActionFilter
     /// <inheritdoc />
     public async Task OnActionExecutionAsync(ActionExecutingContext executing, ActionExecutionDelegate next)
     {
+        // Las acciones anónimas (p. ej. el autoregistro) no dependen de la sesión: una cookie vieja no debe bloquearlas.
+        if (executing.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
+        {
+            await next();
+            return;
+        }
+
         var active = Guid.TryParse(executing.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
             && await context.Users.AnyAsync(u => u.Id == id && u.IsActive);
 

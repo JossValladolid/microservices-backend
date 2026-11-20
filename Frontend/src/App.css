@@ -92,3 +92,78 @@
   gap: 8px;
   margin-top: 20px;
 }
+
+/* Navegación de la barra superior */
+.nav-link {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  border-color: var(--text);
+  font-weight: 600;
+}
+
+.titulo {
+  margin: 0;
+}
+
+.nota {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.ruta {
+  margin-bottom: 12px;
+}
+
+/* Filtros de búsqueda */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filtros input {
+  width: 150px;
+}
+
+select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+/* Paginación */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.paginacion .acciones {
+  align-items: center;
+}
+
+button.peligro {
+  color: #c00;
+  border-color: #c00;
+}

@@ -22,6 +22,11 @@ public class FilesController : ControllerBase
 {
     private const string ChecksumHeader = "x-amz-checksum-sha256";
 
+    /// <summary>Tamaño máximo permitido por archivo (10 MB).</summary>
+    public const long MaxFileSizeBytes = 10 * 1024 * 1024;
+
+    private static readonly string MaxFileSizeMessage = "Los archivos no pueden pesar más de 10 MB.";
+
     private readonly IAmazonS3 _s3Client;
     private readonly IAmazonS3 _presignClient;
     private readonly AuthServiceContext _context;
@@ -82,15 +87,22 @@ public class FilesController : ControllerBase
     /// <summary>
     /// Registra el archivo como pendiente y genera una URL prefirmada para subirlo por HTTP PUT.
     /// El SHA-256 declarado por el cliente queda firmado en la URL (header x-amz-checksum-sha256): el almacenamiento rechaza
-    /// la subida si el contenido no coincide.
+    /// la subida si el contenido no coincide. El tamaño declarado se valida aquí y el real al confirmar (máximo 10 MB).
+    /// Los usuarios suben a sus propias carpetas; un administrador puede subir a cualquier carpeta.
     /// </summary>
     [HttpGet("upload-url")]
     public async Task<IActionResult> GetUploadUrl(
         [FromQuery] string fileName,
         [FromQuery] string sha256,
         [FromQuery] string? contentType,
-        [FromQuery] Guid? folderId)
+        [FromQuery] Guid? folderId,
+        [FromQuery] long? size)
     {
+        if (size is > MaxFileSizeBytes)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { message = MaxFileSizeMessage });
+        }
+
         if (string.IsNullOrWhiteSpace(fileName))
         {
             return BadRequest(new { message = "fileName query parameter is required." });
@@ -108,7 +120,8 @@ public class FilesController : ControllerBase
             return BadRequest(new { message = "No se pueden subir archivos a la raíz: indica una carpeta (folderId)." });
         }
 
-        if (!await _context.Folders.AnyAsync(f => f.Id == folderId && f.OwnerId == userId))
+        var isAdmin = IsAdmin;
+        if (!await _context.Folders.AnyAsync(f => f.Id == folderId && (f.OwnerId == userId || isAdmin)))
         {
             return NotFound(new { message = "Solo puedes subir archivos a tus propias carpetas." });
         }
@@ -117,11 +130,13 @@ public class FilesController : ControllerBase
         var finalContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
 
         var existing = await _context.Files
-            .FirstOrDefaultAsync(f => f.OwnerId == userId && f.FolderId == folderId && f.Name == safeFileName);
+            .FirstOrDefaultAsync(f => f.FolderId == folderId && f.Name == safeFileName);
 
         if (existing is not null)
         {
-            if (existing.Status == FileStatus.Uploaded)
+            // Una subida pendiente de otro usuario solo se descarta si su URL (15 min) ya expiró.
+            var stale = existing.CreatedAt < DateTime.UtcNow.AddMinutes(-15);
+            if (existing.Status == FileStatus.Uploaded || (existing.OwnerId != userId && !stale))
             {
                 return Conflict(new { message = "Ya existe un archivo con ese nombre en esta carpeta." });
             }
@@ -198,6 +213,15 @@ public class FilesController : ControllerBase
             return Conflict(new { message = "La integridad del archivo subido no coincide con el hash declarado." });
         }
 
+        // La URL prefirmada no puede limitar el tamaño: se valida el tamaño real ya almacenado.
+        if (metadata.ContentLength > MaxFileSizeBytes)
+        {
+            await TryDeleteObject(file.StorageKey);
+            _context.Files.Remove(file);
+            await _context.SaveChangesAsync();
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { message = MaxFileSizeMessage });
+        }
+
         file.SizeBytes = metadata.ContentLength;
         file.Status = FileStatus.Uploaded;
         file.UpdatedAt = DateTime.UtcNow;
@@ -252,6 +276,49 @@ public class FilesController : ControllerBase
     }
 
     /// <summary>
+    /// Cambia el nombre de un archivo conservando su extensión. Solo el propietario o un admin.
+    /// Si el nombre nuevo trae la misma extensión se ignora; cualquier otra se toma como parte del nombre.
+    /// </summary>
+    [HttpPatch("{id:guid}")]
+    public async Task<IActionResult> RenameFile(Guid id, [FromBody] RenameRequest request)
+    {
+        var file = await _context.Files.FirstOrDefaultAsync(f => f.Id == id && f.Status == FileStatus.Uploaded);
+        if (file is null) return NotFound();
+
+        if (file.OwnerId != CurrentUserId && !IsAdmin) return Forbid();
+
+        var extension = Path.GetExtension(file.Name);
+        var baseName = (request.Name ?? string.Empty).Trim();
+        if (extension.Length > 0 && baseName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+        {
+            baseName = baseName[..^extension.Length].TrimEnd();
+        }
+
+        if (!RenameRequest.IsValidName(baseName))
+        {
+            return BadRequest(new { message = "El nombre del archivo no es válido." });
+        }
+
+        var newName = baseName + extension;
+        if (newName == file.Name)
+        {
+            return Ok(new { id = file.Id, fileName = file.Name });
+        }
+
+        if (await _context.Files.AnyAsync(f => f.FolderId == file.FolderId && f.Name == newName && f.Id != file.Id))
+        {
+            return Conflict(new { message = "Ya existe un archivo con ese nombre en esta carpeta." });
+        }
+
+        file.PreviousName = file.Name;
+        file.Name = newName;
+        file.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { id = file.Id, fileName = file.Name });
+    }
+
+    /// <summary>
     /// Elimina un archivo de S3/MinIO y su registro. Solo el propietario o un admin.
     /// </summary>
     [HttpDelete("{id:guid}")]
@@ -297,4 +364,19 @@ public class FilesController : ControllerBase
         {
         }
     }
+}
+
+/// <summary>
+/// Datos para renombrar un archivo o una carpeta.
+/// </summary>
+public class RenameRequest
+{
+    /// <summary>Nombre nuevo.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// Indica si un nombre (ya sin espacios laterales) es válido: no vacío, máximo 200 caracteres, sin separadores de ruta ni "." / "..".
+    /// </summary>
+    public static bool IsValidName(string name) =>
+        name.Length is > 0 and <= 200 && name is not ("." or "..") && !name.Contains('/') && !name.Contains('\\');
 }
