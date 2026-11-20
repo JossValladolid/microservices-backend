@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { apiFetch, alExpirarSesion } from '../api.js'
+import { api, alExpirarSesion } from '../api.js'
 
 const AuthContext = createContext(null)
 
@@ -10,9 +10,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     alExpirarSesion(() => setUsuarioActual(null))
 
-    apiFetch('/api/Auth/me')
-      .then(response => response.ok ? response.json() : null)
-      .then(usuario => setUsuarioActual(usuario))
+    api.get('/Auth/me')
+      .then(response => setUsuarioActual(response.data))
       .catch(() => setUsuarioActual(null))
       .finally(() => setVerificando(false))
   }, [])
@@ -22,7 +21,9 @@ export function AuthProvider({ children }) {
 
   const cerrarSesion = async () => {
     try {
-      await fetch('/api/Auth/logout', { method: 'POST' })
+      await api.post('/Auth/logout')
+    } catch {
+      // Aunque falle, la sesión local se cierra.
     } finally {
       setUsuarioActual(null)
     }

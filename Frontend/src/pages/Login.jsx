@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router'
-import { Toaster, toast } from 'react-hot-toast'
+import { toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext.jsx'
+import { api, mensajeError } from '../api.js'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -15,28 +16,19 @@ export default function Login() {
     setCargando(true)
 
     try {
-      const response = await fetch('/api/Auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      })
-
-      if (response.ok) {
-        const usuario = await response.json()
-        toast.success(`Hola, ${usuario.name}`)
-        iniciarSesion(usuario)
-        navigate('/')
-      } else if (response.status === 403) {
-        const { message } = await response.json().catch(() => ({}))
-        toast.error(message || 'Tu cuenta está pendiente de activación')
-      } else {
-        toast.error('Credenciales inválidas')
-      }
+      const { data: usuario } = await api.post('/Auth/login', { email, password })
+      toast.success(`Hola, ${usuario.name}`)
+      iniciarSesion(usuario)
+      navigate('/archivos')
     } catch (error) {
-      console.error('Error al iniciar sesión:', error)
-      toast.error('Ocurrió un error al iniciar sesión')
+      const status = error.response?.status
+      if (status === 403) {
+        toast.error(mensajeError(error, 'Tu cuenta está pendiente de activación'))
+      } else if (status === 401) {
+        toast.error('Credenciales inválidas')
+      } else {
+        toast.error(mensajeError(error, 'Ocurrió un error al iniciar sesión'))
+      }
     } finally {
       setCargando(false)
     }
@@ -44,12 +36,10 @@ export default function Login() {
 
   return (
     <div className="auth">
-      <Toaster position="top-center" />
-
       <form onSubmit={handleSubmit}>
         <h2>Iniciar sesión</h2>
         <div>
-          <label htmlFor="loginEmail">Correo electrónico:</label>
+          <label htmlFor="loginEmail">E-mail:</label>
           <input
             type="email"
             id="loginEmail"
@@ -69,7 +59,7 @@ export default function Login() {
           />
         </div>
         <button type="submit" disabled={cargando}>
-          {cargando ? 'Iniciando sesión...' : 'Iniciar sesión'}
+          {cargando ? 'Ingresando...' : 'Ingresar'}
         </button>
       </form>
       <p>

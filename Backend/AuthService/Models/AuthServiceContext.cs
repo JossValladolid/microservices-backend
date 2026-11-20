@@ -56,6 +56,11 @@ public class AuthServiceContext : DbContext
             .HasForeignKey(s => s.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Cada usuario puede tener solamente un Refresh Token asignado.
+        modelBuilder.Entity<Session>()
+            .HasIndex(s => s.UserId)
+            .IsUnique();
+
         modelBuilder.Entity<Folder>(e =>
         {
             e.HasOne(f => f.Owner).WithMany().HasForeignKey(f => f.OwnerId).OnDelete(DeleteBehavior.Cascade);

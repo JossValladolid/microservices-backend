@@ -9,7 +9,7 @@ export default function PublicRoute() {
   }
 
   if (usuarioActual) {
-    return <Navigate to="/home" replace />
+    return <Navigate to="/archivos" replace />
   }
 
   return <Outlet />

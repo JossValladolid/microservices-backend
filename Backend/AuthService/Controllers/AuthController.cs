@@ -57,8 +57,9 @@ namespace AuthService.Controllers
                     new { message = "Tu cuenta está pendiente de activación por un administrador" });
             }
 
+            // Cada usuario solo puede tener un Refresh Token: el anterior (si lo hay) se invalida.
             await _context.Sessions
-                .Where(s => s.UserId == user.Id && s.ExpiryDate <= DateTime.UtcNow)
+                .Where(s => s.UserId == user.Id)
                 .ExecuteDeleteAsync();
 
             var session = new Session { UserId = user.Id, User = user };

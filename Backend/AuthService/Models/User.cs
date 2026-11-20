@@ -170,6 +170,11 @@ public class CreateUserViewModel : IValidatableObject
     public string? PasswordConfirm { get; set; }
 
     /// <summary>
+    /// Rol solicitado. Solo se respeta si quien crea el usuario es un administrador; en el autoregistro siempre es usuario común.
+    /// </summary>
+    public bool IsAdmin { get; set; }
+
+    /// <summary>
     /// Valida que la contraseña y la confirmación de contraseña coincidan.
     /// </summary>
     /// <param name="validationContext"></param>
@@ -239,6 +244,42 @@ public class UserResponseDTO
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Indica si el usuario tiene un Refresh Token vigente asignado (solo en las consultas de administración).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? HasRefreshToken { get; set; }
+}
+
+/// <summary>
+/// Filtros y paginación para la consulta de usuarios. Las cadenas se buscan como sub-cadenas (sin distinguir mayúsculas).
+/// </summary>
+public class UserQuery
+{
+    /// <summary>Página (empieza en 1).</summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>Tamaño de página.</summary>
+    public int PageSize { get; set; } = 10;
+
+    /// <summary>Sub-cadena del nombre o del nombre de usuario.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Sub-cadena del correo.</summary>
+    public string? Email { get; set; }
+
+    /// <summary>Fecha de nacimiento mínima (inclusive).</summary>
+    public DateOnly? BirthDateFrom { get; set; }
+
+    /// <summary>Fecha de nacimiento máxima (inclusive).</summary>
+    public DateOnly? BirthDateTo { get; set; }
+
+    /// <summary>Filtra por rol: true = administradores, false = usuarios comunes.</summary>
+    public bool? IsAdmin { get; set; }
+
+    /// <summary>Filtra por si tienen o no un Refresh Token asignado.</summary>
+    public bool? HasRefreshToken { get; set; }
 }
 
 /// <summary>
@@ -261,9 +302,9 @@ public class LoginViewModel
 }
 
 /// <summary>
-/// Modelo de vista para la actualización de un usuario.
+/// Modelo de vista para la actualización de un usuario (solo administradores).
 /// </summary>
-public class UpdateUserViewModel
+public class UpdateUserViewModel : IValidatableObject
 {
     /// <summary>
     /// Nombre del usuario.
@@ -272,10 +313,48 @@ public class UpdateUserViewModel
     public string? Name { get; set; }
 
     /// <summary>
+    /// Nombre de usuario único (también renombra su carpeta home).
+    /// </summary>
+    [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+    public string? UserName { get; set; }
+
+    /// <summary>
     /// Email del usuario.
     /// </summary>
     [Required(ErrorMessage = "El email es obligatorio")]
     [EmailAddress(ErrorMessage = "El email no es válido")]
     public string? Email { get; set; }
 
+    /// <summary>
+    /// Fecha de nacimiento del usuario.
+    /// </summary>
+    [Required(ErrorMessage = "La fecha de nacimiento es obligatoria")]
+    public DateOnly? BirthDate { get; set; }
+
+    /// <summary>
+    /// Nueva contraseña; vacía o nula para no cambiarla. Al cambiarla se revoca el Refresh Token del usuario.
+    /// </summary>
+    public string? Password { get; set; }
+
+    /// <summary>
+    /// Confirmación de la nueva contraseña.
+    /// </summary>
+    public string? PasswordConfirm { get; set; }
+
+    /// <summary>
+    /// Rol del usuario.
+    /// </summary>
+    public bool IsAdmin { get; set; }
+
+    /// <summary>
+    /// Valida que la contraseña (si se cambia) coincida con su confirmación. El nombre de usuario se valida en el
+    /// controlador solo si cambia (los usuarios semilla pueden tener nombres reservados, como "admin").
+    /// </summary>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!string.IsNullOrEmpty(Password) && Password != PasswordConfirm)
+        {
+            yield return new ValidationResult("Las contraseñas deben coincidir", [nameof(PasswordConfirm)]);
+        }
+    }
 }
