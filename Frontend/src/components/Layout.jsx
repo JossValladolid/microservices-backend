@@ -8,7 +8,7 @@ export default function Layout() {
     <div>
       <div className="barra">
         <p>
-          Sesión iniciada como <strong>{usuarioActual.name}</strong>
+          inición sesiada como <strong>{usuarioActual.name}</strong>
           {' '}({usuarioActual.isAdmin ? 'administrador' : 'usuario'})
         </p>
         <nav className="acciones">
