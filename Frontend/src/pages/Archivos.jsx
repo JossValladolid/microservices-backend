@@ -81,9 +81,7 @@ export default function Archivos() {
 
   const info = datos.info
   const ruta = info?.path ?? []
-  const esPropia = !!carpetaId && !!info && info.ownerId === usuarioActual?.id
-  const puedeSubir = esPropia && !esAdmin
-  const puedeEscribir = !!carpetaId && !!info && (esPropia || esAdmin)
+  const puedeEscribir = !!carpetaId && !!info && (info.ownerId === usuarioActual?.id || esAdmin)
   const puedeModificar = (item) => item.ownerId === usuarioActual?.id || esAdmin
 
   const obtenerArchivoVerificado = async (id) => {
@@ -199,16 +197,14 @@ export default function Archivos() {
       <div className="barra">
         <h2 className="titulo">Archivos</h2>
         <div className="acciones">
-          {puedeSubir && (
+          {puedeEscribir && (
             <>
               <input type="file" ref={inputRef} style={{ display: 'none' }} onChange={subirAqui} />
               <button type="button" className="btn-primario" onClick={() => inputRef.current?.click()} disabled={uploading}>
                 {uploading ? 'Subiendo...' : 'Subir archivo (máx. 10 MB)'}
               </button>
+              <button type="button" onClick={crearCarpeta}>Nueva carpeta</button>
             </>
-          )}
-          {puedeEscribir && (
-            <button type="button" onClick={crearCarpeta}>Nueva carpeta</button>
           )}
           <button type="button" onClick={recargar} disabled={cargando}>Actualizar</button>
         </div>
