@@ -16,7 +16,6 @@ export function AuthProvider({ children }) {
       .finally(() => setVerificando(false))
   }, [])
 
-  // usuario: respuesta de /api/Auth/login (el backend ya dejó los tokens en cookies)
   const iniciarSesion = (usuario) => setUsuarioActual(usuario)
 
   const cerrarSesion = async () => {

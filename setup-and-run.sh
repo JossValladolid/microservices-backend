@@ -49,6 +49,8 @@ fi
 # 5. Determinar comando docker compose (v2 plugin o v1 binario)
 if docker compose version >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
+    # Nunca intentar descargar imágenes: todo debe venir de images.tar (modo offline)
+    PULL_FLAG="--pull never"
 elif command -v docker-compose >/dev/null 2>&1; then
     DOCKER_COMPOSE="docker-compose"
 else
@@ -56,9 +58,11 @@ else
     exit 1
 fi
 
+PULL_FLAG="${PULL_FLAG:-}"
+
 # 6. Levantar la aplicación
 echo "Iniciando los contenedores con $COMPOSE_FILE..."
-$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d $PULL_FLAG
 
 echo ""
 echo "Aplicacion web: https://localhost"
