@@ -115,7 +115,9 @@ export default function Usuarios() {
 
       {mostrarFormulario && (
         <>
-          <FormUser titulo="Registrar nuevo usuario" permitirRol onUserCreated={recargar} />
+          <section className="panel panel-form">
+            <FormUser titulo="Registrar nuevo usuario" permitirRol onUserCreated={recargar} />
+          </section>
           <hr />
         </>
       )}

@@ -200,7 +200,7 @@ export default function Archivos() {
           {puedeEscribir && (
             <>
               <input type="file" ref={inputRef} style={{ display: 'none' }} onChange={subirAqui} />
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}>
+              <button type="button" className="btn-primario" onClick={() => inputRef.current?.click()} disabled={uploading}>
                 {uploading ? 'Subiendo...' : 'Subir archivo (máx. 10 MB)'}
               </button>
               <button type="button" onClick={crearCarpeta}>Nueva carpeta</button>
