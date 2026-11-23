@@ -1,7 +1,6 @@
 import axios from 'axios'
 
-// Los tokens viajan en cookies HttpOnly (no en localStorage): con withCredentials el navegador
-// anexa automáticamente el Access Token a cada request a la API.
+// Los tokens viajan en cookies HttpOnly con withCredentials el navegador anexa automáticamente el Access Token a cada request a la API.
 export const api = axios.create({
   baseURL: '/api',
   withCredentials: true
@@ -14,8 +13,7 @@ export function alExpirarSesion(callback) {
   alPerderSesion = callback
 }
 
-// Rutas en las que un 401 no significa "access token expirado".
-const SIN_REFRESCO = ['/Auth/login', '/Auth/refresh', '/Auth/logout']
+const SIN_REFRESH = ['/Auth/login', '/Auth/refresh', '/Auth/logout']
 
 // Si varios requests fallan a la vez, todos esperan el mismo refresh.
 function refrescarTokens() {
@@ -28,13 +26,13 @@ function refrescarTokens() {
   return refrescoEnCurso
 }
 
-// Interceptor: si el Access Token expiró (401), pide un nuevo par de tokens con el Refresh Token
+// Interceptor: si el Access Token expiró, pide un nuevo par de tokens con el Refresh Token 
 // y reintenta una vez el request. Si el Refresh Token también expiró, se cierra la sesión (→ Login).
 api.interceptors.response.use(
   response => response,
   async error => {
     const { config, response } = error
-    const omitir = !config || config._reintentado || SIN_REFRESCO.some(ruta => config.url?.startsWith(ruta))
+    const omitir = !config || config._reintentado || SIN_REFRESH.some(ruta => config.url?.startsWith(ruta))
 
     if (response?.status !== 401 || omitir) {
       return Promise.reject(error)

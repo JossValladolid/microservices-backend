@@ -218,7 +218,7 @@ Con Docker Compose el frontend corre con `npm run dev` dentro del contenedor `fr
 
 El código de React usa rutas relativas (`fetch('/api/User')`) en ambos casos, así que nunca hace falta cambiar nada. Si agregas una dependencia nueva, reconstruye la imagen: `docker compose up -d --build frontend`.
 
-> **Falta:** Para producción, un stage extra en `Frontend/Dockerfile` que ejecute `npm run build` y sirva `dist/` con nginx, junto con un `nginx.conf` que sirva estáticos en lugar de hacer proxy a Vite.
+> Para producción, `Frontend/Dockerfile` tiene la etapa `prod`, que ejecuta `npm run build` y sirve `dist/` con nginx (`Frontend/nginx-spa.conf`) en el mismo puerto 5173, así que el proxy principal no cambia.
 
 ## CORS
 
@@ -300,17 +300,22 @@ Esta opción permite empaquetar la aplicación completa en una máquina con inte
 
 ### 1. Empaquetar imágenes en la máquina principal (con internet)
 
-Asegúrate de tener las imágenes construidas y guárdalas en un archivo `images.tar`:
+Desde la raíz del proyecto ejecuta:
 
 ```bash
-docker save -o images.tar \
-  microservices-certs-init:latest \
-  microservices-backend-authservice:latest \
-  microservices-backend-frontend:latest \
-  firstfinger/minio:latest \
-  nginx:alpine \
-  postgres:16-alpine
+./build-images.sh
 ```
+
+El script descarga las imágenes base, construye las imágenes de producción y las guarda en `images.tar` (~360 MB):
+
+| Imagen | Qué contiene | Tamaño |
+|---|---|---|
+| `microservices-backend-authservice` | Etapa `final` del Dockerfile: solo el runtime de ASP.NET con la app ya compilada (`dotnet publish`), sin SDK ni `dotnet watch` | ~550 MB |
+| `microservices-backend-frontend` | Etapa `prod`: el resultado de `npm run build` servido con nginx (sin Node ni `node_modules`) | ~95 MB |
+| `microservices-certs-init` | Alpine con OpenSSL para generar el certificado sin internet | ~24 MB |
+| `postgres:16-alpine`, `nginx:alpine`, `firstfinger/minio` | Imágenes base | |
+
+> Vuelve a ejecutar `./build-images.sh` cada vez que cambie el código; si no, `images.tar` llevará la versión anterior.
 
 ### 2. Archivos necesarios para la máquina nueva
 
@@ -319,7 +324,7 @@ Copia a una memoria USB (o empaqueta en un archivo) únicamente los siguientes a
 * `images.tar` (imágenes de Docker exportadas)
 * `docker-compose.prod.yml` (orquestación standalone sin volúmenes locales)
 * `setup-and-run.sh` (script de arranque en un solo paso)
-* `Proxy/` (configuraciones de Nginx y generador de certificados)
+* `Proxy/` (configuraciones de Nginx y generador de certificados). No copies `Proxy/nginx/certs/`: los certificados se generan en la máquina nueva y la llave existente pertenece a root, por lo que copiarla falla.
 * `.env` (o `.env.example`)
 
 > **Nota:** No es necesario copiar `Backend/` ni `Frontend/`. Todo el código compilado y dependencias ya viajan dentro de las imágenes de Docker.
@@ -339,4 +344,6 @@ El script se encargará automáticamente de:
 2. Crear el archivo `.env` a partir de `.env.example` si no existiera.
 3. Cargar las imágenes a Docker mediante `docker load -i images.tar`.
 4. Generar los certificados SSL locales de forma offline gracias a `microservices-certs-init`.
-5. Levantar todos los servicios con `docker-compose.prod.yml`.
+5. Levantar todos los servicios con `docker-compose.prod.yml` sin intentar descargar imágenes (`--pull never`).
+
+> Probado con los contenedores en una red de Docker sin salida a internet: login, consulta de usuarios, creación de carpetas, subida a MinIO con URL prefirmada, descarga con verificación SHA-256 y eliminación funcionan. Si se usa `.env.example`, `MINIO_SVCACCT_SECRET_KEY` debe tener entre 8 y 40 caracteres; si no, MinIO no crea la cuenta de servicio y las subidas fallan con 403.
